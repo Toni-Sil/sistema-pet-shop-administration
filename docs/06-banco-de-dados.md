@@ -265,3 +265,23 @@ CREATE INDEX idx_pets_client ON pets(client_id);
 - **Soft delete** via `is_active = FALSE` (nao deletar registros)
 - **JSONB** para configuracoes flexiveis (campo `settings` em stores)
 - **Constraints CHECK** para campos com valores fixos (status, type, etc)
+
+
+## Segurança e Transferência de Dados
+
+### Transferência Segura
+Para garantir que a movimentação de dados entre ambientes (Desenvolvimento, Homologação, Produção) ocorra sem riscos:
+- **Criptografia em Trânsito:** Todas as conexões devem utilizar SSL/TLS.
+- **Ferramentas de Migração:** Utilizar `pg_dump`/`pg_restore` com compressão ou ferramentas nativas do provedor (ex: Supabase CLI).
+- **Ambiente Isolado:** Realizar transferências em redes privadas (VPN/VPC) sempre que possível.
+
+### Prevenção de Impacto (Performance/Delay)
+Operações de banco de dados pesadas podem causar lentidão. Para mitigar isso:
+- **Backups Incrementais:** Transferir apenas as alterações desde o último ponto.
+- **Janelas de Manutenção:** Agendar grandes migrações para horários de baixo tráfego.
+- **Processamento Assíncrono:** Utilizar tarefas em segundo plano (BackgroundTasks) para não bloquear a experiência do usuário durante exportações.
+- **Monitoramento:** Acompanhar o IOPS e CPU durante a transferência para evitar gargalos no sistema em produção.
+
+### Proteção de Dados (LGPD)
+- **RLS (Row Level Security):** Implementado no PostgreSQL para garantir que uma loja não acesse dados de outra.
+- **Mascaramento:** Dados sensíveis (como senhas) nunca são transferidos em texto claro.
