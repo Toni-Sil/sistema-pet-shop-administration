@@ -29,7 +29,7 @@ Database:   PostgreSQL
 Auth:       JWT + MFA
 WhatsApp:   Evolution API (numero proprio do cliente)
 Pagamento:  Asaas (Pix nativo)
-IA:         OpenAI API
+IA:         OpenAI API + outros provedores (Anthropic, Gemini, Sabiá, etc.)
 Infra:      Docker + Dokploy
 ```
 
@@ -39,15 +39,19 @@ Infra:      Docker + Dokploy
 
 ```
 docs/
-├── 00-visao-geral.md          # Contexto, problema e solucao
-├── 01-modulo-estoque.md       # Spec completa do modulo de estoque
-├── 02-modulo-financeiro.md    # Spec completa do modulo financeiro
-├── 03-modulo-agendamento.md   # Spec completa do modulo de agendamento
-├── 04-modulo-crm.md           # Spec completa do CRM de pets
-├── 05-arquitetura-tecnica.md  # Stack, endpoints, componentes
-├── 06-banco-de-dados.md       # Schema PostgreSQL completo
-└── 07-roadmap.md              # Sprints, timeline e prioridades
+├── 00-visao-geral.md              # Contexto, problema e solucao
+├── 01-modulo-estoque.md           # Spec completa do modulo de estoque
+├── 02-modulo-financeiro.md        # Spec completa do modulo financeiro
+├── 03-modulo-agendamento.md       # Spec completa do modulo de agendamento
+├── 04-modulo-crm.md               # Spec completa do CRM de pets
+├── 05-arquitetura-tecnica.md      # Stack, endpoints, componentes
+├── 06-banco-de-dados.md           # Schema PostgreSQL completo
+├── 07-roadmap.md                  # Sprints, timeline e prioridades
+├── 09-ia-multiagentes-llm.md      # Arquitetura de IA, multiagentes e estratégia de LLM
+└── 10-ia-memoria-feedback.md      # Memória, feedback e aprendizado contínuo dos agentes
 ```
+
+> Observacao: o repositorio, neste momento, e focado em **documentacao e design**. A implementacao sera guiada por estes arquivos SDD e pelas skills de IA descritas em `09` e `10` quando o sistema for para producao.
 
 ---
 
@@ -67,6 +71,7 @@ docs/
 - [ ] Historico clinico por pet
 
 ### v3.0 — Modulo IA (Semanas 13-20)
+- [ ] Agentes por modulo (estoque, financeiro, agendamento, CRM)
 - [ ] Relatorios inteligentes com IA
 - [ ] Sugestoes de reposicao de estoque
 - [ ] Upsell automatico por perfil do pet
