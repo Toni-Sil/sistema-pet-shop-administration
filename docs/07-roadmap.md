@@ -134,15 +134,39 @@ Fase 4 - IA (Sem. 14-20)       Relatorios inteligentes
 
 ## FASE 4: IA e Automacoes
 
-### Sprint 8 (Semana 13-16): IA
+### Sprint 8 (Semana 13-16): IA (Foco em Diferencial vs MarketUP)
 
-- [ ] Integracao OpenAI API
+- [ ] Integracao OpenAI/Anthropic/Maritaca para IA
+- [ ] Implementar Agente Orquestrador (roteia para módulos de Estoque e Financeiro)
+- [ ] Implementar Agente de Estoque (consultas e alertas por IA)
+- [ ] Implementar Agente Financeiro (resumo diário/semana em linguagem natural)
 - [ ] Relatorio financeiro com analise em linguagem natural
-- [ ] Sugestoes de reposicao de estoque com base em historico
-- [ ] Upsell automatico: recomendar servico com base no pet
-- [ ] Dashboard de insights (IA explica tendencias)
+- [ ] Dashboard de insights (IA explica tendencias simples)
 
-**Entrega:** IA integrada nas principais telas
+**Entrega:** IA operacional em Estoque/Financeiro, com foco em consultas e explicações
+
+---
+
+### Sprint 9 (Semana 17-18): IA para Servicos e CRM
+
+- [ ] Implementar Agente de Agendamento (remarcar, listar agenda, sugerir horários livres)
+- [ ] Implementar Agente de CRM/Pets (clientes inativos, histórico de pets, vacinas)
+- [ ] Lembretes inteligentes (mensagens mais personalizadas por tipo de serviço)
+- [ ] Telas ajustadas para exibir respostas/ações dos agentes
+
+**Entrega:** IA integrada à rotina de serviços (banho/tosa/consultas) e CRM
+
+---
+
+### Sprint 10 (Semana 19-20): Relatorios Avancados e Upsell
+
+- [ ] Implementar Agente de Relatorios IA (modelo premium, em batch ou sob demanda)
+- [ ] Relatorios inteligentes: churn, ticket medio, produtos/servicos mais relevantes
+- [ ] Sugestoes de reposicao de estoque baseadas em historico e sazonalidade
+- [ ] Upsell automatico: recomendar servicos/campanhas por perfil de pet
+- [ ] Monitor de custo de IA por cliente (logs e estimativa de gasto)
+
+**Entrega:** Sistema se posiciona como “pet shop inteligente”, com diferenciais claros frente a ERPs genéricos
 
 ---
 
@@ -152,7 +176,7 @@ Fase 4 - IA (Sem. 14-20)       Relatorios inteligentes
 Abr 2026   Mai 2026   Jun 2026   Jul 2026   Ago 2026
 |          |          |          |          |
 Sprint 1   Sprint 3   Sprint 4   Sprint 6   Sprint 8
-Sprint 2   ........   Sprint 5   Sprint 7   ........
+Sprint 2   ........   Sprint 5   Sprint 7   Sprint 9-10 (IA)
 ```
 
 ---
@@ -164,7 +188,8 @@ Sprint 2   ........   Sprint 5   Sprint 7   ........
 | MVP (beta) | Semana 7 | 5 beta gratis | R$ 0 |
 | MVP comercial | Semana 8-10 | 20 pagantes | R$ 6.000 |
 | v2.0 lancado | Semana 12 | 50 pagantes | R$ 17.500 |
-| v3.0 (IA) | Semana 16 | 100 pagantes | R$ 40.000 |
+| v3.0 (IA inicial) | Semana 16 | 75 pagantes | R$ 27.500 |
+| v4.0 (IA avancada) | Semana 20 | 100 pagantes | R$ 40.000 |
 
 ---
 
@@ -175,8 +200,9 @@ Sprint 2   ........   Sprint 5   Sprint 7   ........
 | Integracao Asaas complexa | Baixa | Usar sandbox + documentacao oficial |
 | Evolution API instavel | Media | Ter fallback manual para WhatsApp |
 | Beta tester nao usa | Media | Onboarding presencial nos 5 primeiros |
-| Escopo cresce muito | Alta | Seguir SDD estritamente, nao adicionar features |
+| Escopo cresce muito | Alta | Seguir SDD estritamente, nao adicionar features fora de modulo |
 | Bug critico em producao | Media | Rollback rapido via Dokploy |
+| Custo de IA ficar alto | Media | Limitar IA premium a relatorios sob demanda/batch, monitorar tokens |
 
 ---
 
