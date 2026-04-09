@@ -247,3 +247,321 @@ src/components/estoque/
 - [ ] Feedback visual imediato (loading/sucesso/erro)
 - [ ] Emitir beep sonoro ao encontrar produto (opcional)
 - [ ] Validar formato do código antes de buscar
+
+
+---
+
+## Venda por Peso (kg/g)
+
+### Objetivo
+
+Suportar produtos vendidos por peso (ração a granel, petiscos naturais, areia) com precificação automática baseada no peso.
+
+### US-07: Cadastro de Produto por Peso
+
+> Como funcionário, quero cadastrar produtos que são vendidos por peso, informando o preço por kg.
+
+**Critérios de Aceite:**
+
+- [ ] Campo `sale_type` com opções: UNIT (unidade) ou WEIGHT (peso)
+- [ ] Para produtos WEIGHT: campo `weight_in_stock` (kg) obrigatório
+- [ ] Preço por kg informado no campo `sale_price`
+- [ ] Quantidade mínima em kg para alerta de estoque baixo
+- [ ] Estoque mostrado em kg com 3 casas decimais (ex: 45.250 kg)
+
+### US-08: Venda com Balança
+
+> Como operador de caixa, quero pesar o produto na balança e o sistema calcular automaticamente o valor total.
+
+**Critérios de Aceite:**
+
+- [ ] Botão "Ler da Balança" integrado com balança USB/Serial
+- [ ] Campo manual para digitar peso caso balança não esteja disponível
+- [ ] Cálculo automático: `peso (kg) × preço/kg = total`
+- [ ] Exibir peso com 3 casas decimais (ex: 2.350 kg)
+- [ ] Total calculado em tempo real ao alterar peso
+- [ ] Validar que peso não excede estoque disponível
+
+### Exemplos de Uso
+
+**Exemplo 1: Ração a Granel**
+```
+Produto: Ração Premium Adulto
+- Tipo: WEIGHT
+- Preço: R$ 28,00/kg
+- Estoque: 45.500 kg
+
+Venda:
+- Cliente quer: 3.5 kg
+- Total: 3.5 × R$ 28,00 = R$ 98,00
+- Estoque após venda: 42.000 kg
+```
+
+**Exemplo 2: Petisco Natural**
+```
+Produto: Bifinho de Fígado
+- Tipo: WEIGHT  
+- Preço: R$ 85,00/kg
+- Estoque: 2.800 kg
+
+Venda:
+- Cliente quer: 0.250 kg (250g)
+- Total: 0.250 × R$ 85,00 = R$ 21,25
+- Estoque após venda: 2.550 kg
+```
+
+### Schema de Dados (Atualizado)
+
+```sql
+-- Produtos com suporte a peso
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  store_id UUID NOT NULL REFERENCES stores(id),
+  name VARCHAR(255) NOT NULL,
+  sku VARCHAR(100) UNIQUE,
+  category VARCHAR(50) NOT NULL,
+  codigo_barras VARCHAR(100), -- Para scanner
+  
+  -- Tipo de venda
+  sale_type VARCHAR(20) NOT NULL DEFAULT 'UNIT',
+  -- 'UNIT' = unidade | 'WEIGHT' = peso
+  
+  -- Preços
+  cost_price DECIMAL(10, 2) NOT NULL,
+  sale_price DECIMAL(10, 2) NOT NULL,
+  
+  -- Para venda por UNIDADE
+  quantity INTEGER,
+  min_qty INTEGER DEFAULT 5,
+  
+  -- Para venda por PESO  
+  weight_in_stock DECIMAL(10, 3), -- kg
+  min_weight DECIMAL(10, 3), -- alerta se < X kg
+  
+  -- Comum
+  expires_at DATE,
+  image_url TEXT,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  
+  -- Constraints
+  CONSTRAINT valid_sale_type CHECK (sale_type IN ('UNIT', 'WEIGHT')),
+  CONSTRAINT unit_requires_quantity CHECK (
+    (sale_type = 'UNIT' AND quantity IS NOT NULL) OR
+    (sale_type = 'WEIGHT' AND weight_in_stock IS NOT NULL)
+  )
+);
+
+-- Movimentações com suporte a peso
+CREATE TABLE stock_movements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id),
+  type VARCHAR(10) NOT NULL, -- 'entry' | 'exit'
+  
+  -- Para UNIT
+  quantity INTEGER,
+  
+  -- Para WEIGHT
+  weight DECIMAL(10, 3), -- kg
+  
+  reason VARCHAR(100), -- 'purchase' | 'sale' | 'loss' | 'adjust'
+  cost_price DECIMAL(10, 2),
+  supplier VARCHAR(255),
+  user_id UUID REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW(),
+  
+  CONSTRAINT movement_has_qty_or_weight CHECK (
+    quantity IS NOT NULL OR weight IS NOT NULL
+  )
+);
+```
+
+### Endpoints da API (Adicionais)
+
+```
+GET  /api/scale/weight           - Ler peso atual da balança
+POST /api/sales/items/by-weight  - Adicionar item por peso ao carrinho
+GET  /api/products/by-weight     - Listar apenas produtos vendidos por peso
+```
+
+### Componentes de Frontend (Adicionais)
+
+```
+src/components/sales/
+  WeightInput.tsx        - Input com botão "Ler da Balança"
+  WeightProductCard.tsx  - Card de produto com cálculo por peso
+  ScaleReader.tsx        - Integração com balança USB/Serial
+  
+src/pages/stock/
+  WeightProductForm.tsx  - Formulário para produto por peso
+```
+
+### Integração com Balança
+
+#### Balanças Suportadas:
+- **Toledo Prix 3**
+- **Filizola Platina**
+- **Urano POP-Z**
+- **Generic USB Scale** (protocolo HID)
+
+#### Protocolo de Comunicação:
+
+```python
+# Backend: utils/scale.py
+import serial
+import re
+
+class Scale:
+    def __init__(self, port='/dev/ttyUSB0', baudrate=9600):
+        self.serial = serial.Serial(
+            port=port,
+            baudrate=baudrate,
+            timeout=1,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            stopbits=serial.STOPBITS_ONE
+        )
+    
+    def read_weight(self) -> float:
+        """Ler peso da balança em kg"""
+        # Enviar comando de leitura
+        self.serial.write(b'\x05')  # ENQ (request)
+        
+        # Ler resposta
+        response = self.serial.readline()
+        
+        # Parse: formato comum "  2.350 kg\r\n"
+        weight_match = re.search(r'([0-9]+\.[0-9]+)', response.decode())
+        
+        if weight_match:
+            weight_kg = float(weight_match.group(1))
+            return round(weight_kg, 3)
+        
+        raise ValueError("Não foi possível ler o peso")
+    
+    def tare(self):
+        """Zerar/Tarar balança"""
+        self.serial.write(b'T')
+```
+
+#### Endpoint FastAPI:
+
+```python
+from fastapi import APIRouter, HTTPException
+from utils.scale import Scale
+
+router = APIRouter()
+
+@router.get("/api/scale/weight")
+async def get_scale_weight():
+    """Obter peso atual da balança"""
+    try:
+        scale = Scale()
+        weight = scale.read_weight()
+        return {
+            "weight_kg": weight,
+            "status": "success"
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Erro ao ler balança: {str(e)}")
+
+@router.post("/api/scale/tare")
+async def tare_scale():
+    """Zerar/Tarar balança"""
+    scale = Scale()
+    scale.tare()
+    return {"status": "tared"}
+```
+
+### Regras de Negócio Adicionais
+
+1. **Conversão de Unidades:**
+   - Sistema armazena sempre em kg
+   - Interface pode exibir em g (multiplicar por 1000)
+   - Exemplo: 0.250 kg = 250 g
+
+2. **Precisão:**
+   - Estoque: 3 casas decimais (0.001 kg = 1g)
+   - Preço: 2 casas decimais (centavos)
+   - Total: 2 casas decimais (centavos)
+
+3. **Validações:**
+   - Peso mínimo: 0.001 kg (1g)
+   - Peso máximo por venda: não exceder estoque
+   - Alerta se estoque < `min_weight`
+
+4. **Relatórios:**
+   - Valor total em estoque (peso): `Σ(weight_in_stock × cost_price)`
+   - Produtos mais vendidos por peso (kg/mês)
+
+### Fluxo de Venda Completo
+
+```
+1. Operador inicia venda no PDV
+2. Escaneia código de barras ou busca produto
+3. Sistema identifica: sale_type = WEIGHT
+4. Exibe interface de peso:
+   - Botão "Ler da Balança"
+   - Campo manual para peso
+5. Operador:
+   a) Clica "Ler da Balança" → peso automático
+   OU
+   b) Digita peso manualmente
+6. Sistema calcula: peso × preço/kg = total
+7. Operador confirma
+8. Item adicionado ao carrinho
+9. Estoque atualizado: weight_in_stock -= peso_vendido
+```
+
+### Configuração de Balança
+
+```yaml
+# .env
+SCALE_ENABLED=true
+SCALE_PORT=/dev/ttyUSB0
+SCALE_BAUDRATE=9600
+SCALE_TIMEOUT=2
+SCALE_MODEL=toledo_prix3
+```
+
+### Testes
+
+```python
+# tests/test_weight_sales.py
+import pytest
+
+def test_weight_product_creation():
+    product = create_product(
+        name="Ração Granel",
+        sale_type="WEIGHT",
+        sale_price=28.00,
+        weight_in_stock=50.0
+    )
+    assert product.sale_type == "WEIGHT"
+    assert product.weight_in_stock == 50.0
+
+def test_weight_sale_calculation():
+    product = get_product(sale_type="WEIGHT", sale_price=28.00)
+    weight = 3.5
+    total = weight * product.sale_price
+    assert total == 98.00
+
+def test_weight_stock_update():
+    product = get_product(weight_in_stock=50.0)
+    sell_weight(product.id, weight=3.5)
+    product.refresh()
+    assert product.weight_in_stock == 46.5
+
+def test_scale_reading():
+    scale = Scale()
+    weight = scale.read_weight()
+    assert 0 < weight < 50  # peso razoável
+    assert isinstance(weight, float)
+```
+
+### Alertas Específicos para Peso
+
+- **Estoque Baixo:** `weight_in_stock < min_weight`
+- **Estoque Crítico:** `weight_in_stock < (min_weight / 2)`
+- **Balança Offline:** Permitir venda manual digitando peso
+- **Peso Inválido:** Rejeitar se `weight <= 0` ou `weight > weight_in_stock`
