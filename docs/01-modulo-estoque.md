@@ -161,3 +161,89 @@ src/components/stock/
 - [ ] Alerta de estoque baixo aparece no dashboard
 - [ ] Exportacao CSV funcionando
 - [ ] Documentacao Swagger atualizada
+
+
+---
+
+## Leitura de Código de Barras e QR Code
+
+**Referência:** Consultar `skills/09-skill-codigo-barras-qrcode.md` para implementação detalhada.
+
+### Objetivo
+
+Permitir busca rápida de produtos usando scanner USB (pistola) ou câmera (QR Code) para otimizar o fluxo de entrada de estoque e vendas.
+
+### Tipos de Leitura Suportados
+
+1. **Scanner USB** (recomendado para desktop)
+   - Funciona como teclado virtual
+   - Digita o código e pressiona Enter automaticamente
+   - Zero configuração necessária no software
+
+2. **Câmera** (futuro - opcional)
+   - Leitura via webcam ou celular
+   - Requer biblioteca `pyzbar` (backend) ou `html5-qrcode` (frontend)
+
+### Funcionamento
+
+```
+Funcionário escaneia código de barras/QR Code
+        ↓
+Sistema busca produto pelo campo `codigo_barras`
+        ↓
+Exibe dados do produto (nome, preço, estoque atual)
+        ↓
+Funcionário confirma quantidade
+        ↓
+Registra movimentação de estoque
+```
+
+### Endpoint Adicional
+
+```
+GET  /api/products/barcode/{codigo}  - Busca produto por código de barras
+```
+
+### Campo no Banco de Dados
+
+O campo `codigo_barras` no modelo `Produto` já suporta:
+- Códigos de barras 1D (EAN-13, Code 128, etc.)
+- QR Code
+- Qualquer string alfanumérica de até 100 caracteres
+- **Tem índice** para busca rápida
+
+### Componente Frontend
+
+```
+src/components/estoque/
+  ScannerInput.tsx      - Input com autoFocus para scanner USB
+  CameraScanner.tsx     - (futuro) Leitura via câmera
+```
+
+### Fluxo de Uso Principal
+
+1. **Entrada de Estoque:**
+   - Funcionário acessa tela de movimentação
+   - Posiciona cursor no campo de busca (autoFocus)
+   - Escaneia produto com pistola USB
+   - Sistema busca e exibe produto
+   - Confirma quantidade e registra entrada
+
+2. **Venda no PDV:**
+   - Cliente traz produtos
+   - Operador escaneia cada item
+   - Produtos são adicionados ao carrinho
+   - Finaliza venda
+
+### Hardware Recomendado
+
+- **Scanner USB básico:** R$ 80-150 (Honeywell, Datalogic)
+- **Scanner Bluetooth:** R$ 200-400 (mobilidade para inventário)
+
+### Boas Práticas
+
+- [ ] Campo de input sempre com `autoFocus`
+- [ ] Limpar campo após scan bem-sucedido
+- [ ] Feedback visual imediato (loading/sucesso/erro)
+- [ ] Emitir beep sonoro ao encontrar produto (opcional)
+- [ ] Validar formato do código antes de buscar
