@@ -48,10 +48,12 @@ docs/
 ├── 06-banco-de-dados.md           # Schema PostgreSQL completo
 ├── 07-roadmap.md                  # Sprints, timeline e prioridades
 ├── 09-ia-multiagentes-llm.md      # Arquitetura de IA, multiagentes e estratégia de LLM
-└── 10-ia-memoria-feedback.md      # Memória, feedback e aprendizado contínuo dos agentes
+├── 10-ia-memoria-feedback.md      # Memória, feedback e aprendizado contínuo dos agentes
+├── 11-agentes-avancados-negocio.md# Agentes de campanhas, simulação, onboarding, QA, migração e custo de IA
+└── 12-modulo-fiscal.md            # Diretrizes para NF-e, NFC-e e NFS-e
 ```
 
-> Observacao: o repositorio, neste momento, e focado em **documentacao e design**. A implementacao sera guiada por estes arquivos SDD e pelas skills de IA descritas em `09` e `10` quando o sistema for para producao.
+> Observacao: o repositorio, neste momento, e focado em **documentacao e design**. A implementacao sera guiada por estes arquivos SDD e pelas skills de IA descritas em `09`, `10` e `11` quando o sistema for para producao.
 
 ---
 
