@@ -13,13 +13,14 @@ router = APIRouter(prefix="/produtos", tags=["Produtos"])
 
 @router.get("", response_model=List[ProdutoResponse])
 def listar_produtos(
+    search: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_any_role),
     store_id: UUID = Depends(get_current_store_id)
 ):
-    return produto_service.listar(db, store_id, skip, limit)
+    return produto_service.listar(db, store_id, search, skip, limit)
 
 @router.get("/barcode/{codigo}", response_model=ProdutoResponse)
 def buscar_por_codigo_barras(

@@ -88,7 +88,29 @@ AGENT_CONFIG: Dict[str, AgentConfig] = {
 }
 
 
-def get_agent_config(name: str) -> AgentConfig:
+def get_agent_config(name: str, store_configs: Dict[str, Any] | None = None) -> AgentConfig:
     if name not in AGENT_CONFIG:
         raise KeyError(f"Agente desconhecido: {name}")
-    return AGENT_CONFIG[name]
+    
+    config = AGENT_CONFIG[name].model_copy()
+    
+    # Se houver configuração específica da loja para este agente, sobrescreve
+    if store_configs and "ai_agents" in store_configs:
+        alias = {
+            "estoque": "inventory",
+            "financeiro": "financial",
+            "agendamento": "scheduling",
+            "crm": "crm",
+            "orchestrator": "orchestrator",
+        }
+        key = alias.get(name, name)
+        agent_overrides = store_configs["ai_agents"].get(name) or store_configs["ai_agents"].get(key)
+        if isinstance(agent_overrides, str):
+            config.model = agent_overrides
+        elif isinstance(agent_overrides, dict):
+            if "model" in agent_overrides and agent_overrides["model"]:
+                config.model = agent_overrides["model"]
+            if "temperature" in agent_overrides and isinstance(agent_overrides["temperature"], (int, float)):
+                config.temperature = float(agent_overrides["temperature"])
+                
+    return config

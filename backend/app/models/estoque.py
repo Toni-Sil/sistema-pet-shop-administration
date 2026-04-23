@@ -14,6 +14,8 @@ class MovimentacaoEstoque(Base):
     
     type = Column(String(10), nullable=False) # 'entry' or 'exit'
     quantity = Column(Integer, nullable=False)
+    weight = Column(Numeric(10, 3))
+
     reason = Column(String(50))
     cost_price = Column(Numeric(10, 2))
     supplier = Column(String(255))

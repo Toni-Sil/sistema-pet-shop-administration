@@ -1,17 +1,18 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from uuid import UUID
 from datetime import date, timedelta
 from app.models.produto import Produto
 from app.models.agendamento import Agendamento
 from app.models.cliente import Cliente, Pet
-from app.models.venda import Venda
+from app.models.venda import Venda, ItemVenda
 
 class AITools:
     @staticmethod
     def get_stock_levels(db: Session, store_id: UUID):
         products = db.query(Produto).filter(Produto.store_id == store_id).all()
         return [
-            {"nome": p.name, "estoque": p.quantity, "minimo": p.min_qty}
+            {"id": str(p.id), "nome": p.name, "estoque": p.quantity, "minimo": p.min_qty}
             for p in products if p.quantity <= p.min_qty
         ]
 
@@ -56,5 +57,54 @@ class AITools:
             "total_vendas": len(vendas),
             "ticket_medio": total / len(vendas) if vendas else 0
         }
+
+    @staticmethod
+    def get_inventory_predictions(db: Session, store_id: UUID):
+        """
+        Analisa histórico de vendas para prever quando o estoque acabará.
+        Retorna sugestões de compra baseadas na velocidade de saída.
+        """
+        # 1. Pegar vendas dos últimos 30 dias para calcular velocidade
+        trinta_dias_atras = date.today() - timedelta(days=30)
+        
+        vendas_recentes = db.query(
+            ItemVenda.product_id,
+            func.sum(ItemVenda.quantity).label("total_vendido")
+        ).join(Venda, ItemVenda.sale_id == Venda.id).filter(
+            Venda.created_at >= trinta_dias_atras
+        ).group_by(ItemVenda.product_id).all()
+        
+        velocidade_vendas = {v.product_id: float(v.total_vendido) / 30 for v in vendas_recentes}
+        
+        # 2. Pegar estoque atual
+        produtos = db.query(Produto).filter(Produto.store_id == store_id).all()
+        
+        previsoes = []
+        for p in produtos:
+            v_diaria = velocidade_vendas.get(p.id, 0)
+            
+            if v_diaria > 0:
+                dias_restantes = int(p.quantity / v_diaria)
+                if dias_restantes <= 10: # Só avisa se faltar 10 dias ou menos
+                    previsoes.append({
+                        "id": str(p.id),
+                        "nome": p.name,
+                        "estoque_atual": p.quantity,
+                        "venda_diaria_media": round(v_diaria, 2),
+                        "dias_restantes": dias_restantes,
+                        "sugestao_compra": int(v_diaria * 30) # Sugere comprar para 30 dias
+                    })
+            elif p.quantity <= (p.min_qty or 0):
+                # Se não teve vendas mas está abaixo do mínimo
+                previsoes.append({
+                    "id": str(p.id),
+                    "nome": p.name,
+                    "estoque_atual": p.quantity,
+                    "venda_diaria_media": 0,
+                    "dias_restantes": 0,
+                    "sugestao_compra": 10 # Sugestão padrão
+                })
+                
+        return sorted(previsoes, key=lambda x: x['dias_restantes'])
 
 ai_tools = AITools()

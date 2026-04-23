@@ -86,13 +86,14 @@ class ProdutoUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
-class ProdutoResponse(BaseModel):
+class ProdutoResponse(ProdutoBase):
     id: UUID
     store_id: UUID
     quantity: Optional[int] = None
     weight_in_stock: Optional[Decimal] = None
     min_weight: Decimal
     created_at: datetime
-    category: str
+    category: str # Sobrescreve Enum por string na resposta se desejar, ou mantém
     
     model_config = ConfigDict(from_attributes=True)
+

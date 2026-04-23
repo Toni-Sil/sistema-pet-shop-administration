@@ -18,6 +18,7 @@ class Cliente(Base):
     phone = Column(String(20), nullable=False)
     cpf = Column(String(14))
     address = Column(Text)
+    birth_date = Column(Date)
     notes = Column(Text)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -38,6 +39,7 @@ class Pet(Base):
     birth_date = Column(Date)
     weight = Column(String(20))
     color = Column(String(50))
+    allergies = Column(Text)
     photo_url = Column(Text)
     notes = Column(Text)
 
@@ -45,3 +47,4 @@ class Pet(Base):
 
     client = relationship("Cliente", back_populates="pets")
     appointments = relationship("Agendamento", back_populates="pet")
+    vaccines = relationship("PetVaccine", back_populates="pet", cascade="all, delete-orphan")

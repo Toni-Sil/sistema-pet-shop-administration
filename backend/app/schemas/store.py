@@ -7,6 +7,7 @@ class StoreUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    settings: Optional[dict] = None
 
 
 class StoreResponse(BaseModel):
@@ -16,5 +17,7 @@ class StoreResponse(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     plan: str
+    settings: dict
 
     model_config = ConfigDict(from_attributes=True)
+

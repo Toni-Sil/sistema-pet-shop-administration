@@ -65,7 +65,8 @@ async def criar_pix(
             customer_id=store.asaas_customer_id,
             amount=venda.total,
             description=f"Venda #{venda.id.hex[:8]}",
-            due_date=None
+            due_date=None,
+            api_key=store.settings.get("asaas_key")
         )
         
         venda.asaas_charge_id = result["id"]
@@ -93,7 +94,11 @@ async def verificar_status(
 ):
     """Verifica status de uma cobrança Pix"""
     try:
-        status = await asaas_service.verificar_status_cobranca(charge_id)
+        store = db.query(Store).filter(Store.id == store_id).first()
+        status = await asaas_service.verificar_status_cobranca(
+            charge_id, 
+            api_key=store.settings.get("asaas_key") if store else None
+        )
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -119,27 +124,8 @@ async def webhook_asaas(
             from datetime import datetime
             venda.paid_at = datetime.utcnow()
             
-            from app.models.estoque import MovimentacaoEstoque
-            for item in venda.items:
-                produto = item.product
-                if produto.sale_type == 'WEIGHT':
-                    if item.weight:
-                        produto.weight_in_stock = (produto.weight_in_stock or 0) - item.weight
-                else:
-                    if item.quantity:
-                        produto.quantity = (produto.quantity or 0) - item.quantity
-                
-                mov = MovimentacaoEstoque(
-                    product_id=produto.id,
-                    store_id=venda.store_id,
-                    type='exit',
-                    quantity=item.quantity,
-                    weight=item.weight,
-                    reason='sale',
-                    sale_id=venda.id,
-                    user_id=venda.user_id
-                )
-                db.add(mov)
+            # Nota: O estoque já foi decrementado na criação da venda (realizar_venda)
+            # aqui apenas confirmamos o pagamento.
             
             db.commit()
             return {"message": "Pagamento confirmado"}

@@ -5,17 +5,23 @@ from typing import Optional, List
 from decimal import Decimal
 
 class ItemVendaBase(BaseModel):
-    product_id: UUID
+    product_id: Optional[UUID] = None
+    pacote_id: Optional[UUID] = None
     quantity: Optional[int] = None
     weight: Optional[Decimal] = None
     unit_price: Decimal
     total: Decimal
 
+class VendaPagamentoBase(BaseModel):
+    method: str
+    amount: Decimal
+
 class VendaCreate(BaseModel):
     client_id: Optional[UUID] = None
     items: List[ItemVendaBase]
     discount: Optional[Decimal] = Decimal('0.00')
-    payment_method: str
+    payment_method: Optional[str] = None # Mantido para compatibilidade temporária
+    payments: Optional[List[VendaPagamentoBase]] = None
     notes: Optional[str] = None
 
 class ItemVendaResponse(ItemVendaBase):

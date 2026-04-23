@@ -11,5 +11,8 @@ from app.models.service import Service
 from app.models.schedule_block import ScheduleBlock
 from app.models.pet_vaccine import PetVaccine
 from app.models.pet_note import PetNote
+from app.models.pacote import Pacote, PacoteItem, ClientePacote
+from app.models.prontuario import Prontuario
+from app.models.hotel import Quarto, Hospedagem
 
 __all__ = ['Base']

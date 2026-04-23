@@ -1,5 +1,8 @@
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
+from app.models.hotel import Hospedagem
+from app.models.cliente import Pet
+from sqlalchemy import func
 from uuid import UUID
 from fastapi import HTTPException
 from typing import List, Dict
@@ -7,14 +10,146 @@ from typing import List, Dict
 from app.models.agendamento import Agendamento
 from app.models.schedule_block import ScheduleBlock
 from app.models.service import Service
+from app.models.hotel import Hospedagem
 from app.schemas.agendamento import AgendamentoCreate, AgendamentoUpdate
 
 
-def listar(db: Session, store_id: UUID, data: date = None, skip: int = 0, limit: int = 50):
-    q = db.query(Agendamento).filter(Agendamento.store_id == store_id)
+def listar(
+    db: Session,
+    store_id: UUID,
+    data: date = None,
+    start_date: date = None,
+    end_date: date = None,
+    skip: int = 0,
+    limit: int = 50
+):
+    from sqlalchemy.orm import joinedload
+    
+    q = db.query(Agendamento).options(joinedload(Agendamento.pet)).filter(Agendamento.store_id == store_id)
     if data:
         q = q.filter(Agendamento.date == data)
+    if start_date:
+        q = q.filter(Agendamento.date >= start_date)
+    if end_date:
+        q = q.filter(Agendamento.date <= end_date)
     return q.order_by(Agendamento.date, Agendamento.time).offset(skip).limit(limit).all()
+
+
+def listar_unificado(
+    db: Session,
+    store_id: UUID,
+    start_date: date,
+    end_date: date
+):
+    """Retorna agendamentos e hospedagens unificados para a agenda"""
+    from sqlalchemy.orm import joinedload
+    
+    # 1. Agendamentos Padrão (Agora com Eager Loading para evitar N+1 queries)
+    agendamentos = db.query(Agendamento).options(joinedload(Agendamento.pet)).filter(
+        Agendamento.store_id == store_id,
+        Agendamento.date >= start_date,
+        Agendamento.date <= end_date
+    ).all()
+    
+    # 2. Hospedagens (Hotel/Creche) (Também com Eager Loading)
+    # Mostramos a entrada (check-in) e a saída (check-out) como eventos na agenda
+    hospedagens = db.query(Hospedagem).options(joinedload(Hospedagem.pet)).filter(
+        Hospedagem.store_id == store_id,
+        ((func.date(Hospedagem.check_in_previsto) >= start_date) & (func.date(Hospedagem.check_in_previsto) <= end_date)) |
+        ((func.date(Hospedagem.check_out_previsto) >= start_date) & (func.date(Hospedagem.check_out_previsto) <= end_date))
+    ).all()
+    
+    resultado = []
+    
+    for ag in agendamentos:
+        resultado.append({
+            "id": str(ag.id),
+            "pet_id": str(ag.pet_id) if ag.pet_id else None,
+            "pet_name": ag.pet.name if ag.pet else ("Objeto" if ag.pet_id is None else "N/A"),
+            "service": ag.service_legacy or "Serviço",
+            "date": ag.date.isoformat(),
+            "time": ag.time,
+            "status": ag.status,
+            "price": str(ag.price or 0),
+            "type": "service"
+        })
+        
+    for h in hospedagens:
+        # Evento de Check-in
+        if start_date <= h.check_in_previsto.date() <= end_date:
+            resultado.append({
+                "id": f"hotel-in-{h.id}",
+                "pet_id": str(h.pet_id),
+                "pet_name": h.pet.name if h.pet else "Hóspede",
+                "service": "Check-in Hotel",
+                "date": h.check_in_previsto.date().isoformat(),
+                "time": h.check_in_previsto.strftime("%H:%M"),
+                "status": "scheduled" if h.status == 'planned' else "done",
+                "price": str(h.valor_total),
+                "type": "hotel"
+            })
+        
+        # Evento de Check-out
+        if start_date <= h.check_out_previsto.date() <= end_date:
+            resultado.append({
+                "id": f"hotel-out-{h.id}",
+                "pet_id": str(h.pet_id),
+                "pet_name": h.pet.name if h.pet else "Hóspede",
+                "service": "Check-out Hotel",
+                "date": h.check_out_previsto.date().isoformat(),
+                "time": h.check_out_previsto.strftime("%H:%M"),
+                "status": "scheduled",
+                "price": "0",
+                "type": "hotel"
+            })
+            
+    return resultado
+
+
+def estimar_duracao_servico(
+    service_type: str,
+    breed: str = None,
+    weight: str = None
+) -> int:
+    """
+    Estima o tempo em minutos para um serviço baseado na realidade brasileira.
+    Considera porte (peso) e raça (tipo de pelo).
+    """
+    # Tempo base por serviço
+    base_times = {
+        "banho": 40,
+        "tosa": 60,
+        "banho_tosa": 90,
+        "consulta": 30,
+        "vacina": 15
+    }
+    
+    tempo = base_times.get(service_type.lower(), 45)
+    
+    # Ajuste por porte (Peso)
+    if weight:
+        w = float(weight.replace("kg", "").replace(",", ".").strip())
+        if w > 25: # Grande
+            tempo += 40
+        elif w > 12: # Médio
+            tempo += 20
+        elif w > 7: # Pequeno (padrão)
+            tempo += 0
+        else: # Mini
+            tempo -= 10
+            
+    # Ajuste por Raça (Complexidade de Pelo)
+    heavy_coats = ["golden", "chow", "husky", "akita", "bernese", "border"]
+    medium_coats = ["poodle", "shih", "lhasa", "maltes", "yorkshire"]
+    
+    breed_lower = (breed or "").lower()
+    
+    if any(r in breed_lower for r in heavy_coats):
+        tempo += 30 # Muito pelo / Subpelo
+    elif any(r in breed_lower for r in medium_coats):
+        tempo += 15 # Pelo longo
+        
+    return max(tempo, 15) # Mínimo de 15 min
 
 
 def verificar_conflito(
@@ -41,11 +176,11 @@ def verificar_conflito(
     ).all()
     
     for ag in existe_agendamento:
-        ag_start = datetime.strptime(ag.time, "%H:%M").time()
+        ag_start_dt = datetime.combine(date, datetime.strptime(ag.time, "%H:%M").time())
         ag_service = db.query(Service).filter(Service.id == ag.service_id).first()
-        ag_end = ag_start + timedelta(minutes=ag_service.duration if ag_service else 0)
+        ag_end_dt = ag_start_dt + timedelta(minutes=ag_service.duration if ag_service else 0)
         
-        if not (ends_at.time() <= ag_start or scheduled_at.time() >= ag_end.time()):
+        if not (ends_at <= ag_start_dt or scheduled_at >= ag_end_dt):
             return {
                 "has_conflict": True,
                 "existing_appointment": {

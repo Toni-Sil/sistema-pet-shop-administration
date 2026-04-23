@@ -35,12 +35,23 @@ class DashboardResponse(BaseModel):
     lucroMes: float
     vendasHoje: int
     ticketMedio: float
+    totalClientes: int
 
 
 class FinanceiroReportItem(BaseModel):
     categoria: str
     total: float
     quantidade: int
+
+class PaymentMethodReportItem(BaseModel):
+    method: str
+    total: float
+    count: int
+
+class ServiceReportItem(BaseModel):
+    service: str
+    count: int
+    revenue: float
 
 
 @router.get("/dre", response_model=DREResponse)
@@ -102,6 +113,7 @@ def dashboard_financeiro(
     store_id: UUID = Depends(get_current_store_id)
 ):
     from datetime import timedelta
+    from app.models.cliente import Cliente
     
     hoje = datetime.utcnow().date()
     inicio_semana = hoje - timedelta(days=hoje.weekday())
@@ -148,7 +160,8 @@ def dashboard_financeiro(
         despesasMes=float(despesas_mes),
         lucroMes=lucro_mes,
         vendasHoje=vendas_hoje,
-        ticketMedio=round(ticket, 2)
+        ticketMedio=round(ticket, 2),
+        totalClientes=db.query(Cliente).filter(Cliente.store_id == store_id).count()
     )
 
 
@@ -213,6 +226,56 @@ def vendas_por_produto(
             ))
     
     return produtos
+
+@router.get("/sales-by-payment-method", response_model=List[PaymentMethodReportItem])
+def vendas_por_metodo_pagamento(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_any_role),
+    store_id: UUID = Depends(get_current_store_id)
+):
+    result = db.query(
+        Venda.payment_method,
+        func.sum(Venda.total).label('total'),
+        func.count(Venda.id).label('count')
+    ).filter(
+        Venda.store_id == store_id,
+        Venda.payment_status == 'paid'
+    ).group_by(Venda.payment_method).all()
+    
+    return [
+        PaymentMethodReportItem(
+            method=r.payment_method or "Não informado",
+            total=float(r.total),
+            count=r.count
+        )
+        for r in result
+    ]
+
+@router.get("/appointments-summary", response_model=List[ServiceReportItem])
+def resumo_agendamentos(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_any_role),
+    store_id: UUID = Depends(get_current_store_id)
+):
+    from app.models.agendamento import Agendamento
+    
+    # Normalização básica para evitar duplicatas por causa de case-sensitivity ou underscores
+    # Agrupa por service_legacy normalizado
+    result = db.query(
+        func.lower(func.replace(Agendamento.service_legacy, '_', ' ')).label('service_name'),
+        func.count(Agendamento.id).label('count')
+    ).filter(
+        Agendamento.store_id == store_id
+    ).group_by(func.lower(func.replace(Agendamento.service_legacy, '_', ' '))).all()
+    
+    return [
+        ServiceReportItem(
+            service=r.service_name.capitalize() if r.service_name else "Outros",
+            count=r.count,
+            revenue=0.0
+        )
+        for r in result
+    ]
 
 
 @router.get("/sales/export/csv")

@@ -52,8 +52,22 @@ async def register(dados: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+    import time
+    
+    # Hash dummy (bcrypt) pré-calculado para evitar erro de timing caso o usuário não exista
+    dummy_hash = "$2b$12$D2MvRjL/8rR.0s5Yt1/M1OCwE.K9X4o.DqM.8A9E2P9rN8Qo4/eGi"
+    
     user = db.query(User).filter(User.email == credentials.email).first()
-    if not user or not security.verify_password(credentials.password, user.password_hash):
+    
+    # Previne ataque de temporização: sempre executa a função de hash
+    valid_password = False
+    if user:
+        valid_password = security.verify_password(credentials.password, user.password_hash)
+    else:
+        security.verify_password(credentials.password, dummy_hash)
+        
+    if not user or not valid_password:
+        time.sleep(1.5)  # Atraso anti-bruteforce (Throttling simples)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha incorretos.",

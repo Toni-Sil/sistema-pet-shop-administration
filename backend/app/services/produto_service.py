@@ -4,11 +4,14 @@ from fastapi import HTTPException
 from app.models.produto import Produto
 from app.schemas.produto import ProdutoCreate, ProdutoUpdate, SaleType
 
-def listar(db: Session, store_id: UUID, skip: int = 0, limit: int = 50):
-    return db.query(Produto).filter(
+def listar(db: Session, store_id: UUID, search: str = None, skip: int = 0, limit: int = 50):
+    query = db.query(Produto).filter(
         Produto.store_id == store_id,
         Produto.is_active == True
-    ).offset(skip).limit(limit).all()
+    )
+    if search:
+        query = query.filter(Produto.name.ilike(f"%{search}%"))
+    return query.offset(skip).limit(limit).all()
 
 def buscar_por_id(db: Session, id: UUID, store_id: UUID):
     produto = db.query(Produto).filter(

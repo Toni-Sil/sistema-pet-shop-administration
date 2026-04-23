@@ -9,10 +9,12 @@ from app.core.config import settings
 ASAAS_API_URL = "https://api.asaas.com/v3"
 ASAAS_API_KEY = os.getenv("ASAAS_API_KEY", "")
 
-headers = {
-    "access_token": ASAAS_API_KEY,
-    "Content-Type": "application/json"
-}
+def get_headers(api_key: Optional[str] = None):
+    key = api_key or ASAAS_API_KEY
+    return {
+        "access_token": key,
+        "Content-Type": "application/json"
+    }
 
 
 class AsaasError(Exception):
@@ -23,17 +25,19 @@ async def criar_cobranca_pix(
     customer_id: str,
     amount: Decimal,
     description: str,
-    due_date: Optional[date] = None
+    due_date: Optional[date] = None,
+    api_key: Optional[str] = None
 ) -> Dict[str, Any]:
     """Cria cobrança Pix no Asaas"""
-    if not ASAAS_API_KEY:
+    key = api_key or ASAAS_API_KEY
+    if not key:
         raise AsaasError("ASAAS_API_KEY não configurada")
     
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{ASAAS_API_URL}/payments",
-                headers=headers,
+                headers=get_headers(api_key),
                 json={
                     "customer": customer_id,
                     "billingType": "PIX",
@@ -61,16 +65,17 @@ async def criar_cobranca_pix(
             raise AsaasError(f"Erro na requisição: {str(e)}")
 
 
-async def verificar_status_cobranca(charge_id: str) -> Dict[str, Any]:
+async def verificar_status_cobranca(charge_id: str, api_key: Optional[str] = None) -> Dict[str, Any]:
     """Verifica status de uma cobrança"""
-    if not ASAAS_API_KEY:
+    key = api_key or ASAAS_API_KEY
+    if not key:
         raise AsaasError("ASAAS_API_KEY não configurada")
     
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
                 f"{ASAAS_API_URL}/payments/{charge_id}",
-                headers=headers,
+                headers=get_headers(api_key),
                 timeout=15.0
             )
             
@@ -92,17 +97,19 @@ async def criar_customer(
     name: str,
     email: str,
     cpf_cnpj: Optional[str] = None,
-    phone: Optional[str] = None
+    phone: Optional[str] = None,
+    api_key: Optional[str] = None
 ) -> Dict[str, Any]:
     """Cria cliente no Asaas"""
-    if not ASAAS_API_KEY:
+    key = api_key or ASAAS_API_KEY
+    if not key:
         raise AsaasError("ASAAS_API_KEY não configurada")
     
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
                 f"{ASAAS_API_URL}/customers",
-                headers=headers,
+                headers=get_headers(api_key),
                 json={
                     "name": name,
                     "email": email,
@@ -125,16 +132,17 @@ async def criar_customer(
             raise AsaasError(f"Erro na requisição: {str(e)}")
 
 
-async def buscar_customer_por_cpf(cpf: str) -> Optional[Dict[str, Any]]:
+async def buscar_customer_por_cpf(cpf: str, api_key: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Busca cliente por CPF"""
-    if not ASAAS_API_KEY:
+    key = api_key or ASAAS_API_KEY
+    if not key:
         return None
     
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
                 f"{ASAAS_API_URL}/customers",
-                headers=headers,
+                headers=get_headers(key),
                 params={"cpfCnpj": cpf},
                 timeout=15.0
             )

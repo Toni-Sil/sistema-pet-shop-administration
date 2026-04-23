@@ -8,9 +8,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.config import settings
 from app.routers import (
     auth, produtos, estoque, vendas, clientes, agendamentos, despesas,
-    settings as settings_router, services, pets, public, whatsapp, ai, schedule_block, 
-    reports, payments, mfa, idempotency
+    settings as settings_router, services, pets, public, whatsapp, ai, schedule_block,
+    reports, payments, mfa, idempotency, caixa, fiscal, pacotes, hotel
 )
+from ai.routes import router as ai_agents_router
 from app.middleware import RequestLoggingMiddleware
 from app.rate_limit import RateLimitMiddleware
 from app.exceptions import (
@@ -36,7 +37,17 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:8080",
+        "http://0.0.0.0:3000",
+        "http://0.0.0.0:3001",
+        "http://0.0.0.0:8080"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,6 +74,12 @@ app.include_router(reports.router, prefix=settings.API_V1_STR)
 app.include_router(payments.router, prefix=settings.API_V1_STR)
 app.include_router(mfa.router, prefix=settings.API_V1_STR)
 app.include_router(idempotency.router, prefix=settings.API_V1_STR)
+app.include_router(caixa.router, prefix=settings.API_V1_STR)
+app.include_router(fiscal.router, prefix=settings.API_V1_STR)
+app.include_router(pacotes.router, prefix=settings.API_V1_STR)
+app.include_router(hotel.router, prefix=settings.API_V1_STR)
+
+app.include_router(ai_agents_router, prefix=f"{settings.API_V1_STR}/ai-agents", tags=["AI Agents"])
 
 @app.get("/health")
 def health_check():

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 
 from app.database import get_db
 from app.core.deps import get_any_role, get_current_store_id
@@ -12,6 +12,15 @@ from app.models.pet_note import PetNote
 from app.models.agendamento import Agendamento
 from app.schemas.crm import PetVaccineResponse, PetVaccineCreate, PetNoteResponse, PetNoteCreate
 from app.schemas.cliente import PetResponse
+from app.models.prontuario import Prontuario
+from pydantic import BaseModel
+
+class ProntuarioCreate(BaseModel):
+    anamnese: Optional[str] = ""
+    exame_fisico: Optional[str] = ""
+    suspeita_diagnostica: Optional[str] = ""
+    prescricao: Optional[str] = ""
+    attachments: Optional[List[str]] = []
 
 router = APIRouter(prefix="/pets", tags=["CRM de Pets"])
 
@@ -63,7 +72,7 @@ def get_pet_history(
     db: Session = Depends(get_db),
     store_id: UUID = Depends(get_current_store_id)
 ):
-    # Retorna agendamentos concluídos e notas
+    # Retorna agendamentos concluídos, notas e prontuários
     pet = db.query(Pet).filter(Pet.id == id, Pet.store_id == store_id).first()
     if not pet:
         raise HTTPException(404, "Pet não encontrado")
@@ -74,10 +83,12 @@ def get_pet_history(
     ).order_by(Agendamento.date.desc()).all()
     
     notes = db.query(PetNote).filter(PetNote.pet_id == id).order_by(PetNote.created_at.desc()).all()
+    prontuarios = db.query(Prontuario).filter(Prontuario.pet_id == id).order_by(Prontuario.created_at.desc()).all()
     
     return {
         "agendamentos": agendamentos,
-        "notes": notes
+        "notes": notes,
+        "prontuarios": prontuarios
     }
 
 @router.post("/{id}/notes", response_model=PetNoteResponse)
@@ -101,3 +112,25 @@ def add_pet_note(
     db.commit()
     db.refresh(db_note)
     return db_note
+
+@router.post("/{id}/prontuarios")
+def add_prontuario(
+    id: UUID,
+    dados: ProntuarioCreate,
+    current_user: User = Depends(get_any_role),
+    db: Session = Depends(get_db),
+    store_id: UUID = Depends(get_current_store_id)
+):
+    pet = db.query(Pet).filter(Pet.id == id, Pet.store_id == store_id).first()
+    if not pet:
+        raise HTTPException(404, "Pet não encontrado")
+    
+    db_prontuario = Prontuario(
+        pet_id=id,
+        user_id=current_user.id,
+        **dados.model_dump()
+    )
+    db.add(db_prontuario)
+    db.commit()
+    db.refresh(db_prontuario)
+    return db_prontuario

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from uuid import UUID
 
@@ -18,3 +18,26 @@ async def chat_with_ai(
     current_user: User = Depends(get_any_role)
 ):
     return await ai_service.process_chat(db, store_id, request)
+
+
+@router.get("/inventory-predictions")
+async def get_inventory_predictions(
+    db: Session = Depends(get_db),
+    store_id: UUID = Depends(get_current_store_id),
+    current_user: User = Depends(get_any_role)
+):
+    """Retorna previsões de estoque baseadas em IA"""
+    from app.services.ai_tools import ai_tools
+    return ai_tools.get_inventory_predictions(db, store_id)
+
+
+@router.post("/scribe")
+async def vet_scribe(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    store_id: UUID = Depends(get_current_store_id),
+    current_user: User = Depends(get_any_role)
+):
+    """Transforma áudio de consulta em prontuário estruturado"""
+    audio_content = await file.read()
+    return await ai_service.process_audio_scribe(audio_content)

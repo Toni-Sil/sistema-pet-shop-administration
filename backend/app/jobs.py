@@ -5,6 +5,8 @@ from app.database import SessionLocal
 from app.models.agendamento import Agendamento
 from app.models.produto import Produto
 from app.models.pet_vaccine import PetVaccine
+from app.models.cliente import Cliente, Pet
+from app.models.venda import Venda
 from app.models.store import Store
 from app.services.whatsapp_service import WhatsAppService
 
@@ -204,6 +206,123 @@ def check_pending_payments(db, store_id: UUID):
                 print(f"Venda {venda.id} cancelada")
         except Exception as e:
             print(f"Erro ao verificar venda {venda.id}: {e}")
+
+
+def send_birthday_messages():
+    """Envia felicitações de aniversário para Pets e Clientes"""
+    db = SessionLocal()
+    try:
+        from sqlalchemy import extract
+        today = datetime.utcnow().date()
+        
+        # Pets fazendo aniversário hoje
+        pets = db.query(Pet).filter(
+            extract('month', Pet.birth_date) == today.month,
+            extract('day', Pet.birth_date) == today.day
+        ).all()
+        
+        for pet in pets:
+            if pet.client and pet.client.phone:
+                msg = (
+                    f"Parabéns, {pet.name}! 🎂🐶🐱\n\n"
+                    f"Nós da equipe desejamos um dia repleto de lambeijos e petiscos para o seu melhor amigo!\n\n"
+                    "Traga ele hoje para ganhar um mimo especial! 🐾"
+                )
+                WhatsAppService.send_message(db, pet.store_id, pet.client.phone, msg)
+
+        # Clientes fazendo aniversário hoje
+        clientes = db.query(Cliente).filter(
+            extract('month', Cliente.birth_date) == today.month,
+            extract('day', Cliente.birth_date) == today.day
+        ).all()
+        
+        for cli in clientes:
+            msg = (
+                f"Feliz Aniversário, {cli.name}! 🎈🥳\n\n"
+                f"Desejamos muita saúde e felicidades para você e toda sua família (incluindo os de quatro patas)!\n\n"
+                "Para comemorar, você tem 10% de desconto em qualquer serviço esta semana! 🎉"
+            )
+            WhatsAppService.send_message(db, cli.store_id, cli.phone, msg)
+            
+    except Exception as e:
+        print(f"Error sending birthdays: {e}")
+    finally:
+        db.close()
+
+
+def send_debt_reminders():
+    """Envia lembrete de cobrança para vendas com pagamento pendente"""
+    db = SessionLocal()
+    try:
+        # Vendas pendentes há mais de 3 dias
+        three_days_ago = datetime.utcnow() - timedelta(days=3)
+        vendas = db.query(Venda).filter(
+            Venda.payment_status == 'pending',
+            Venda.created_at <= three_days_ago
+        ).all()
+        
+        for v in vendas:
+            if v.client and v.client.phone:
+                msg = (
+                    f"Olá {v.client.name}! 😊\n\n"
+                    f"Passando para lembrar da sua pendência no valor de R$ {float(v.total):.2f}.\n"
+                    "Caso já tenha efetuado o pagamento, por favor desconsidere.\n\n"
+                    "Pode nos chamar aqui para qualquer dúvida! ✅"
+                )
+                WhatsAppService.send_message(db, v.store_id, v.client.phone, msg)
+    except Exception as e:
+        print(f"Error sending debt reminders: {e}")
+    finally:
+        db.close()
+
+
+async def send_predictive_rebuy_reminders(db: Session):
+    """
+    Analisa o histórico de compras e envia lembretes de recompra proativos.
+    Foco em itens de consumo recorrente (Ração, Medicamentos).
+    """
+    from app.models.venda import Venda, ItemVenda
+    from app.models.cliente import Cliente
+    from app.models.produto import Produto
+    from app.services.whatsapp_service import WhatsAppService
+    
+    # 1. Buscar vendas de produtos recorrentes (Ração/Medicamento) nos últimos 60 dias
+    sessenta_dias_atras = datetime.now() - timedelta(days=60)
+    
+    vendas = db.query(Venda).join(ItemVenda).filter(
+        Venda.created_at >= sessenta_dias_atras,
+        Venda.client_id != None
+    ).all()
+    
+    # Mapear última compra de cada produto por cliente
+    ultima_compra = {} # (client_id, product_id) -> data
+    for v in vendas:
+        for item in v.items:
+            key = (v.client_id, item.product_id)
+            if key not in ultima_compra or v.created_at > ultima_compra[key]:
+                ultima_compra[key] = v.created_at
+                
+    count = 0
+    hoje = datetime.now()
+    
+    for (client_id, product_id), data_venda in ultima_compra.items():
+        # Ciclo médio de 28 dias para aviso antecipado
+        dias_desde_venda = (hoje - data_venda).days
+        
+        if dias_desde_venda == 27: 
+            cliente = db.query(Cliente).filter(Cliente.id == client_id).first()
+            produto = db.query(Produto).filter(Produto.id == product_id).first()
+            
+            if cliente and cliente.phone and produto and produto.category in ["Ração", "Medicamento"]:
+                msg = (
+                    f"Olá {cliente.name.split()[0]}! 🐾\n\n"
+                    f"Notamos que a *{produto.name}* deve estar acabando. "
+                    f"Para sua conveniência, já podemos deixar uma unidade reservada aqui para você. "
+                    f"Gostaria que eu separasse agora? 😊"
+                )
+                await WhatsAppService.send_message(db, cliente.store_id, cliente.phone, msg)
+                count += 1
+    return count
 
 
 if __name__ == "__main__":

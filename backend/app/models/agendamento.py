@@ -36,3 +36,7 @@ class Agendamento(Base):
     @property
     def service(self):
         return self.service_legacy
+
+    @service.setter
+    def service(self, value):
+        self.service_legacy = value

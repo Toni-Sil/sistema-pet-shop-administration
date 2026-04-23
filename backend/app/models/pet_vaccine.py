@@ -4,6 +4,8 @@ from sqlalchemy import Column, String, DateTime, Date, ForeignKey
 from sqlalchemy import UUID
 from app.database import Base
 
+from sqlalchemy.orm import relationship
+
 class PetVaccine(Base):
     __tablename__ = "pet_vaccines"
 
@@ -14,3 +16,5 @@ class PetVaccine(Base):
     next_dose = Column(Date)
     notes = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    pet = relationship("Pet", back_populates="vaccines")
