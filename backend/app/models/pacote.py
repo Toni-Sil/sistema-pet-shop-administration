@@ -32,6 +32,7 @@ class PacoteItem(Base):
     quantity = Column(Integer, nullable=False)
     
     pacote = relationship("Pacote", back_populates="items")
+    service = relationship("app.models.service.Service")
 
 class ClientePacote(Base):
     """

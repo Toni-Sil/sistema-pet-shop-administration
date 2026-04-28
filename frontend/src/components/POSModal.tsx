@@ -16,6 +16,7 @@ interface Product {
   category?: string;
   image_url?: string;
   unit?: string;
+  sale_type?: string;
 }
 
 interface CartItem {
@@ -23,6 +24,8 @@ interface CartItem {
   name: string;
   price: number;
   qty: number;
+  weight?: number;
+  sale_type?: string;
 }
 
 interface POSModalProps {
@@ -77,7 +80,7 @@ export const POSModal = ({ open, onOpenChange, initialData }: POSModalProps) => 
               is_package: true
             })));
           } else {
-            const { data } = await api.get("/products");
+            const { data } = await api.get("/produtos");
             setProducts(data);
           }
         } catch (err) {
@@ -95,32 +98,52 @@ export const POSModal = ({ open, onOpenChange, initialData }: POSModalProps) => 
   });
 
   const addToCart = (product: Product) => {
+    const existing = cart.find((i) => i.id === product.id);
+    if (existing && product.sale_type === "WEIGHT") {
+      toast.info("Produto já no carrinho. Altere o peso diretamente.");
+      return;
+    }
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === product.id);
-      if (existing) {
+      const prevExisting = prev.find((i) => i.id === product.id);
+      if (prevExisting) {
         return prev.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1 } : i));
       }
       return [...prev, { 
         id: product.id, 
         name: product.name, 
         price: Number(product.sale_price || 0), 
-        qty: 1 
+        qty: product.sale_type === "WEIGHT" ? 0 : 1,
+        weight: product.sale_type === "WEIGHT" ? 1 : undefined,
+        sale_type: product.sale_type
       }];
     });
-    toast.success(`${product.name} adicionado`, { duration: 1000, position: "bottom-center" });
+    if (product.sale_type !== "WEIGHT" || !existing) {
+      toast.success(`${product.name} adicionado`, { duration: 1000, position: "bottom-center" });
+    }
   };
 
   const updateQty = (id: string, delta: number) => {
     setCart((prev) =>
       prev
         .map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
-        .filter((i) => i.qty > 0)
+        .filter((i) => i.sale_type === "WEIGHT" || i.qty > 0)
+    );
+  };
+
+  const updateWeight = (id: string, weight: number) => {
+    setCart((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, weight } : i))
     );
   };
 
   const removeItem = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
 
-  const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const total = cart.reduce((sum, i) => {
+    if (i.sale_type === "WEIGHT") {
+      return sum + i.price * (i.weight || 0);
+    }
+    return sum + i.price * i.qty;
+  }, 0);
 
   const [loadingSale, setLoadingSale] = useState(false);
 
@@ -134,9 +157,10 @@ export const POSModal = ({ open, onOpenChange, initialData }: POSModalProps) => 
         product_id: i.id.includes('-') && !(i as any).is_package ? i.id : null,
         pacote_id: (i as any).is_package ? i.id : null,
         service_id: !i.id.includes('-') ? i.id : null,
-        quantity: i.qty,
+        quantity: i.sale_type === 'WEIGHT' ? 0 : i.qty,
+        weight: i.sale_type === 'WEIGHT' ? i.weight : undefined,
         unit_price: i.price,
-        total: i.price * i.qty
+        total: i.sale_type === 'WEIGHT' ? i.price * (i.weight || 0) : i.price * i.qty
       })),
       discount: 0,
       payments: paymentList.length > 0 ? paymentList : [{ method: payment, amount: total }],
@@ -308,14 +332,31 @@ export const POSModal = ({ open, onOpenChange, initialData }: POSModalProps) => 
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold truncate">{item.name || "Sem nome"}</p>
                     <div className="flex items-center gap-3 mt-2">
-                      <button onClick={() => updateQty(item.id, -1)} className="h-7 w-7 rounded bg-background border border-border flex items-center justify-center hover:bg-secondary text-foreground"><Minus className="h-3 w-3" /></button>
-                      <span className="text-sm font-bold">{item.qty}</span>
-                      <button onClick={() => updateQty(item.id, 1)} className="h-7 w-7 rounded bg-background border border-border flex items-center justify-center hover:bg-secondary text-foreground"><Plus className="h-3 w-3" /></button>
+                      {item.sale_type === 'WEIGHT' ? (
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="number" 
+                            step="0.001" 
+                            min="0"
+                            value={item.weight !== undefined ? item.weight : ''}
+                            onChange={(e) => updateWeight(item.id, parseFloat(e.target.value) || 0)}
+                            className="w-24 h-7 text-xs px-2"
+                            placeholder="0.000"
+                          />
+                          <span className="text-xs text-muted-foreground">kg</span>
+                        </div>
+                      ) : (
+                        <>
+                          <button onClick={() => updateQty(item.id, -1)} className="h-7 w-7 rounded bg-background border border-border flex items-center justify-center hover:bg-secondary text-foreground"><Minus className="h-3 w-3" /></button>
+                          <span className="text-sm font-bold">{item.qty}</span>
+                          <button onClick={() => updateQty(item.id, 1)} className="h-7 w-7 rounded bg-background border border-border flex items-center justify-center hover:bg-secondary text-foreground"><Plus className="h-3 w-3" /></button>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end justify-between">
                     <button onClick={() => removeItem(item.id)} className="text-muted-foreground/30 hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
-                    <p className="font-bold text-primary text-sm">R$ {(item.price * item.qty).toFixed(2).replace(".", ",")}</p>
+                    <p className="font-bold text-primary text-sm">R$ {(item.sale_type === 'WEIGHT' ? item.price * (item.weight || 0) : item.price * item.qty).toFixed(2).replace(".", ",")}</p>
                   </div>
                 </div>
               ))}

@@ -28,7 +28,10 @@ def list_pacotes(
     store_id: UUID = Depends(get_current_store_id),
     current_user: User = Depends(get_any_role)
 ):
-    return db.query(Pacote).filter(Pacote.store_id == store_id).all()
+    from sqlalchemy.orm import joinedload
+    return db.query(Pacote).options(
+        joinedload(Pacote.items).joinedload(PacoteItem.service)
+    ).filter(Pacote.store_id == store_id).all()
 
 @router.post("/")
 def create_pacote(

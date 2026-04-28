@@ -17,29 +17,29 @@ depends_on = None
 
 def upgrade() -> None:
     # Products: add codigo_barras, sale_type, weight_in_stock, min_weight
-    op.add_column('products', sa.Column('codigo_barras', sa.String(100), nullable=True))
-    op.add_column('products', sa.Column('sale_type', sa.String(20), nullable=True, server_default='UNIT'))
-    op.add_column('products', sa.Column('weight_in_stock', sa.Numeric(10, 3), nullable=True))
-    op.add_column('products', sa.Column('min_weight', sa.Numeric(10, 3), nullable=True, server_default='0.5'))
-    
-    op.create_index('ix_products_codigo_barras', 'products', ['codigo_barras'])
-    op.create_index('ix_products_codigo_barras_store', 'products', ['codigo_barras', 'store_id'])
+    with op.batch_alter_table('products') as batch_op:
+        batch_op.add_column(sa.Column('codigo_barras', sa.String(100), nullable=True))
+        batch_op.add_column(sa.Column('sale_type', sa.String(20), nullable=True, server_default='UNIT'))
+        batch_op.add_column(sa.Column('weight_in_stock', sa.Numeric(10, 3), nullable=True))
+        batch_op.add_column(sa.Column('min_weight', sa.Numeric(10, 3), nullable=True, server_default='0.5'))
+        batch_op.create_index('ix_products_codigo_barras', ['codigo_barras'])
+        batch_op.create_index('ix_products_codigo_barras_store', ['codigo_barras', 'store_id'])
     
     # Sales: add client_id
-    op.add_column('sales', sa.Column('client_id', sa.UUID(), sa.ForeignKey('clients.id'), nullable=True))
+    with op.batch_alter_table('sales') as batch_op:
+        batch_op.add_column(sa.Column('client_id', sa.UUID(), sa.ForeignKey('clients.id', name='fk_sales_client_id'), nullable=True))
     
     # Sale Items: add weight
-    op.add_column('sale_items', sa.Column('weight', sa.Numeric(10, 3), nullable=True))
+    with op.batch_alter_table('sale_items') as batch_op:
+        batch_op.add_column(sa.Column('weight', sa.Numeric(10, 3), nullable=True))
     
     # Pets: add photo_url
-    op.add_column('pets', sa.Column('photo_url', sa.Text(), nullable=True))
+    with op.batch_alter_table('pets') as batch_op:
+        batch_op.add_column(sa.Column('photo_url', sa.Text(), nullable=True))
     
     # Stores: add asaas_customer_id (for Pix)
-    op.add_column('stores', sa.Column('asaas_customer_id', sa.String(255), nullable=True))
-    
-    # Users: add MFA fields
-    op.add_column('users', sa.Column('mfa_secret', sa.String(32), nullable=True))
-    op.add_column('users', sa.Column('mfa_enabled', sa.Boolean(), nullable=True, server_default='false'))
+    with op.batch_alter_table('stores') as batch_op:
+        batch_op.add_column(sa.Column('asaas_customer_id', sa.String(255), nullable=True))
     
     # Create schedule_blocks table if not exists
     op.create_table('schedule_blocks',

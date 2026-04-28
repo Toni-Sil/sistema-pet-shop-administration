@@ -41,12 +41,12 @@ interface AIAgentConfig {
 const CATEGORIES_AI = ["Aluguel", "Fornecedor", "Salário", "Serviços", "Marketing", "Outros"];
 
 const AGENTS = [
-  { id: "orchestrator", name: "Orquestrador", description: "O cérebro principal que decide para qual agente rotear a pergunta.", icon: "Brain" },
-  { id: "financial", name: "Agente Financeiro", description: "Responsável por analisar lucros, despesas e faturamento.", icon: "DollarSign" },
-  { id: "inventory", name: "Agente de Estoque", description: "Analisa níveis de produtos e alertas de reposição.", icon: "Package" },
-  { id: "scheduling", name: "Agente de Agendamento", description: "Organiza a agenda e evita conflitos de horários.", icon: "Calendar" },
-  { id: "crm", name: "Agente de CRM / Saúde", description: "Especialista em histórico de pets e vacinas.", icon: "ShieldCheck" },
-  { id: "fiscal", name: "Agente Fiscal AI", description: "Traduz erros da SEFAZ, sugere NCM/CFOP e monitora limites tributários.", icon: "FileText" },
+  { id: "orchestrator", name: "Orquestrador", description: "O cérebro principal que decide para qual agente rotear a pergunta.", icon: "Brain", recommendation: "💡 Recomendado: Modelos avançados e rápidos (ex: gpt-4o, claude-3-5-sonnet)." },
+  { id: "financial", name: "Agente Financeiro", description: "Responsável por analisar lucros, despesas e faturamento.", icon: "DollarSign", recommendation: "💡 Recomendado: Modelos com forte raciocínio lógico (ex: gpt-4o, claude-3-opus)." },
+  { id: "inventory", name: "Agente de Estoque", description: "Analisa níveis de produtos e alertas de reposição.", icon: "Package", recommendation: "💡 Recomendado: Modelos econômicos e muito rápidos (ex: gpt-4o-mini, gemini-1.5-flash)." },
+  { id: "scheduling", name: "Agente de Agendamento", description: "Organiza a agenda e evita conflitos de horários.", icon: "Calendar", recommendation: "💡 Recomendado: Modelos precisos para lógica de datas (ex: gpt-4-turbo, claude-3-5-sonnet)." },
+  { id: "crm", name: "Agente de CRM / Saúde", description: "Especialista em histórico de pets e vacinas.", icon: "ShieldCheck", recommendation: "💡 Recomendado: Modelos mais baratos e de conversação (ex: claude-3-haiku, gpt-4o-mini)." },
+  { id: "fiscal", name: "Agente Fiscal AI", description: "Traduz erros da SEFAZ, sugere NCM/CFOP e monitora limites tributários.", icon: "FileText", recommendation: "💡 Recomendado: Modelos de alta precisão analítica (ex: gpt-4o, gemini-1.5-pro)." },
 ];
 
 const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
@@ -1054,6 +1054,11 @@ const AgentModelSelector = ({ agent, currentConfig, providers, onChange }: any) 
           <div className="space-y-1 pr-6">
             <h4 className="text-sm font-bold leading-none">{agent.name}</h4>
             <p className="text-xs text-muted-foreground leading-tight">{agent.description}</p>
+            {agent.recommendation && (
+              <p className="text-[10px] text-emerald-600/80 font-medium mt-1.5 leading-tight bg-emerald-500/5 px-2 py-1 rounded">
+                {agent.recommendation}
+              </p>
+            )}
           </div>
         </div>
 
@@ -1077,13 +1082,47 @@ const AgentModelSelector = ({ agent, currentConfig, providers, onChange }: any) 
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-1.5 col-span-2">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Modelo</Label>
-                <Input
-                  className="h-9 text-xs"
+                <select
+                  className="w-full text-xs h-9 rounded-lg border border-input bg-background/50 px-2 focus:ring-1 focus:ring-primary outline-none"
                   value={currentConfig?.model || ""}
-                  list="llm-model-suggestions"
                   onChange={(e) => onChange({ ...currentConfig, model: e.target.value })}
-                  placeholder="Modelo"
-                />
+                >
+                  <option value="" disabled>Selecione o modelo</option>
+                  <optgroup label="OpenAI">
+                    <option value="gpt-4o">gpt-4o (Recomendado)</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini (Rápido)</option>
+                    <option value="gpt-4-turbo">gpt-4-turbo</option>
+                    <option value="gpt-4">gpt-4</option>
+                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                  </optgroup>
+                  <optgroup label="Anthropic">
+                    <option value="claude-3-5-sonnet-20240620">claude-3-5-sonnet</option>
+                    <option value="claude-3-opus-20240229">claude-3-opus</option>
+                    <option value="claude-3-sonnet-20240229">claude-3-sonnet</option>
+                    <option value="claude-3-haiku-20240307">claude-3-haiku</option>
+                  </optgroup>
+                  <optgroup label="Google">
+                    <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                    <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                    <option value="gemini-1.0-pro">gemini-1.0-pro</option>
+                  </optgroup>
+                  <optgroup label="Meta / Mistral">
+                    <option value="llama3-70b-8192">llama3-70b (Meta)</option>
+                    <option value="llama3-8b-8192">llama3-8b (Meta)</option>
+                    <option value="mistral-large-latest">mistral-large-latest</option>
+                    <option value="open-mixtral-8x22b">open-mixtral-8x22b</option>
+                  </optgroup>
+                  {currentConfig?.model && ![
+                    'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo',
+                    'claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307',
+                    'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro',
+                    'llama3-70b-8192', 'llama3-8b-8192', 'mistral-large-latest', 'open-mixtral-8x22b'
+                  ].includes(currentConfig.model) && (
+                    <optgroup label="Atual Personalizado">
+                      <option value={currentConfig.model}>{currentConfig.model}</option>
+                    </optgroup>
+                  )}
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground px-1">Temp</Label>

@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, Unlock, Lock, History, ArrowUpRight, ArrowDownLeft, FileText, ShoppingCart, Plus } from "lucide-react";
+import { Wallet, Unlock, Lock, History, ArrowUpRight, ArrowDownLeft, FileText, ShoppingCart, Plus, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { POSModal } from "@/components/POSModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CashierSession {
   id: string;
@@ -43,6 +44,7 @@ interface Sale {
 interface Product {
   id: string;
   name: string;
+  sale_type?: string;
 }
 
 const POS = () => {
@@ -55,6 +57,8 @@ const POS = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isClosing, setIsClosing] = useState(false);
   const [isPOSOpen, setIsPOSOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+  const [isSaleDetailsOpen, setIsSaleDetailsOpen] = useState(false);
 
   const loadStatus = async () => {
     setLoading(true);
@@ -150,13 +154,14 @@ const POS = () => {
   };
 
   const getProductSummary = () => {
-    const summary: Record<string, { name: string, qty: number, weight: number, total: number }> = {};
+    const summary: Record<string, { name: string, qty: number, weight: number, total: number, isWeight: boolean }> = {};
     currentSales.forEach(sale => {
       sale.items.forEach(item => {
         const prod = products.find(p => p.id === item.product_id);
         const name = prod?.name || "Produto Desconhecido";
+        const isWeight = prod?.sale_type === 'WEIGHT';
         if (!summary[item.product_id]) {
-          summary[item.product_id] = { name, qty: 0, weight: 0, total: 0 };
+          summary[item.product_id] = { name, qty: 0, weight: 0, total: 0, isWeight };
         }
         summary[item.product_id].qty += item.quantity || 0;
         summary[item.product_id].weight += Number(item.weight || 0);
@@ -265,7 +270,9 @@ const POS = () => {
                             <div key={idx} className="flex justify-between items-center text-[11px] p-2 bg-background rounded-lg border border-border/50">
                               <span className="truncate flex-1 font-medium">{item.name}</span>
                               <div className="flex items-center gap-2">
-                                <span className="text-muted-foreground">x{item.qty || item.weight.toFixed(2) + 'kg'}</span>
+                                <span className="text-muted-foreground">
+                                  {item.isWeight ? `${item.weight.toFixed(3)}kg` : `x${item.qty}`}
+                                </span>
                                 <span className="font-bold text-primary">R$ {item.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                               </div>
                             </div>
@@ -339,7 +346,7 @@ const POS = () => {
                      ) : (
                         <div className="space-y-3">
                            {currentSales.map(sale => (
-                              <div key={sale.id} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg border border-border">
+                              <div key={sale.id} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg border border-border group hover:border-primary/50 transition-colors">
                                  <div>
                                     <div className="flex items-center gap-2">
                                        <span className="text-xs font-bold uppercase text-muted-foreground">{sale.payment_method}</span>
@@ -347,9 +354,19 @@ const POS = () => {
                                     </div>
                                     <p className="text-[10px] text-muted-foreground">{format(new Date(sale.created_at), "HH:mm")}</p>
                                  </div>
-                                 <div className="text-right">
-                                    <p className="font-bold text-sm">R$ {Number(sale.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                    <p className="text-[9px] text-muted-foreground">ID: {sale.id.slice(0,8)}</p>
+                                 <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                       <p className="font-bold text-sm">R$ {Number(sale.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                       <p className="text-[9px] text-muted-foreground">ID: {sale.id.slice(0,8)}</p>
+                                    </div>
+                                    <Button 
+                                       variant="ghost" 
+                                       size="icon" 
+                                       className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                       onClick={() => { setSelectedSale(sale); setIsSaleDetailsOpen(true); }}
+                                    >
+                                       <Eye className="h-4 w-4" />
+                                    </Button>
                                  </div>
                               </div>
                            ))}
@@ -424,6 +441,57 @@ const POS = () => {
           }
         }} 
       />
+
+      <Dialog open={isSaleDetailsOpen} onOpenChange={setIsSaleDetailsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Venda</DialogTitle>
+          </DialogHeader>
+          {selectedSale && (
+            <div className="space-y-4 mt-4">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">ID:</span>
+                <span className="font-mono">{selectedSale.id}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Data/Hora:</span>
+                <span>{format(new Date(selectedSale.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Pagamento:</span>
+                <span className="uppercase font-bold">{selectedSale.payment_method}</span>
+              </div>
+              
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-xs font-bold uppercase text-muted-foreground mb-3">Itens Vendidos</h4>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                  {selectedSale.items.map((item, idx) => {
+                    const prod = products.find(p => p.id === item.product_id);
+                    const name = prod?.name || "Produto Desconhecido";
+                    const isWeight = prod?.sale_type === 'WEIGHT';
+                    return (
+                      <div key={idx} className="flex justify-between text-sm bg-secondary/30 p-2 rounded">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {isWeight ? `${Number(item.weight || 0).toFixed(3)}kg` : `x${item.quantity || 0}`}
+                          </span>
+                        </div>
+                        <span className="font-bold">R$ {Number(item.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div className="border-t pt-4 mt-4 flex justify-between items-center">
+                <span className="font-bold">Total da Venda:</span>
+                <span className="text-lg font-black text-primary">R$ {Number(selectedSale.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

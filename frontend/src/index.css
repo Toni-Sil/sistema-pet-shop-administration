@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 210 40% 99%;
+    --background: 210 40% 97.5%;
     --foreground: 222.2 47.4% 11.2%;
 
     --card: 0 0% 100%;
@@ -19,20 +19,20 @@
     /* Cyan from Logo */
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 210 40% 94%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 40%;
+    --muted: 210 40% 92%;
+    --muted-foreground: 215.4 16.3% 38%;
 
-    --accent: 210 40% 96.1%;
+    --accent: 210 40% 94%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 32% 91%;
-    --input: 214.3 32% 91%;
+    --border: 214.3 32% 87%;
+    --input: 214.3 32% 87%;
     --ring: 191 91% 40%;
 
     --radius: 1rem;

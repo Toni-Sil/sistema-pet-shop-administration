@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +149,29 @@ const Clients = () => {
     setIsOpen(true);
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const tId = toast.loading("Importando clientes...");
+    try {
+      const { data } = await api.post("/clientes/import/csv", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      toast.success(data.message, { id: tId });
+      loadClients();
+    } catch (err) {
+      toast.error("Erro ao importar arquivo.", { id: tId });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -156,12 +179,28 @@ const Clients = () => {
           <h1 className="text-3xl font-heading font-bold">Clientes</h1>
           <p className="text-muted-foreground mt-1">Gestão de tutores e seus companheiros pet.</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={(val) => { setIsOpen(val); if(!val) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="rounded-xl shadow-lg shadow-primary/20">
-              <PlusCircle className="h-4 w-4 mr-2" /> Cadastrar Novo Tutor
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportCSV}
+            accept=".csv"
+            className="hidden"
+          />
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="rounded-xl border-dashed"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileText className="h-4 w-4 mr-2" /> Importar CSV
+          </Button>
+          <Dialog open={isOpen} onOpenChange={(val) => { setIsOpen(val); if(!val) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button size="lg" className="rounded-xl shadow-lg shadow-primary/20">
+                <PlusCircle className="h-4 w-4 mr-2" /> Cadastrar Novo Tutor
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">

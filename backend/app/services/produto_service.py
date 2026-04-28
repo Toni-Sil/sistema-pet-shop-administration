@@ -72,3 +72,43 @@ def deletar(db: Session, id: UUID, store_id: UUID):
     produto.is_active = False
     db.commit()
     return {"message": "Produto deletado (soft delete) com sucesso"}
+
+def importar_csv(db: Session, rows: list, store_id: UUID):
+    from decimal import Decimal
+    count = 0
+    for row in rows:
+        try:
+            # Normalização básica
+            sale_type = 'WEIGHT' if str(row.get('tipo', '')).upper() in ['PESO', 'WEIGHT', 'KG'] else 'UNIT'
+            name = row.get('nome') or row.get('name')
+            if not name: continue
+            
+            p_data = {
+                "name": name,
+                "category": row.get('categoria', 'Outro'),
+                "sale_price": Decimal(str(row.get('preco_venda', 0)).replace(',', '.')),
+                "cost_price": Decimal(str(row.get('preco_custo', 0)).replace(',', '.')),
+                "sku": row.get('sku'),
+                "codigo_barras": row.get('codigo_barras'),
+                "sale_type": sale_type,
+                "unit": row.get('unidade', 'un' if sale_type == 'UNIT' else 'kg'),
+                "min_qty": int(row.get('min_qtd', 5)),
+                "min_weight": Decimal(str(row.get('min_peso', 0.5)).replace(',', '.'))
+            }
+            
+            if sale_type == 'WEIGHT':
+                p_data['weight_in_stock'] = Decimal(str(row.get('estoque', 0)).replace(',', '.'))
+                p_data['quantity'] = None
+            else:
+                p_data['quantity'] = int(row.get('estoque', 0))
+                p_data['weight_in_stock'] = None
+                
+            produto = Produto(store_id=store_id, **p_data)
+            db.add(produto)
+            count += 1
+        except Exception as e:
+            print(f"Erro ao importar linha {row}: {e}")
+            continue
+            
+    db.commit()
+    return {"message": f"{count} produtos importados com sucesso"}

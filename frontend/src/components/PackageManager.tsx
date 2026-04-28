@@ -33,7 +33,7 @@ const PackageManager = () => {
     try {
       const [sRes, pRes] = await Promise.all([
         api.get("/services"),
-        api.get("/pacotes")
+        api.get("/pacotes/")
       ]);
       setServices(sRes.data);
       setPackages(pRes.data);
@@ -69,7 +69,7 @@ const PackageManager = () => {
     }
 
     try {
-      await api.post("/pacotes", {
+      await api.post("/pacotes/", {
         name,
         price: parseFloat(price),
         items: selectedItems

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Package, TrendingUp, Plus, CircleDollarSign, Boxes, AlertTriangle, Search, ChevronDown, ArrowDown, ArrowUp, Pencil, PlusCircle, Trash2, ImageIcon, Sparkles } from "lucide-react";
+import { Package, TrendingUp, Plus, CircleDollarSign, Boxes, AlertTriangle, Search, ChevronDown, ArrowDown, ArrowUp, Pencil, PlusCircle, Trash2, ImageIcon, Sparkles, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -22,6 +22,9 @@ interface Product {
   category: string;
   qty: number;
   quantity: number;
+  weight_in_stock?: number;
+  sale_type?: string;
+  min_weight?: number;
   sale_price: number;
   cost_price: number;
   image_url?: string;
@@ -31,7 +34,24 @@ const LOW_STOCK_THRESHOLD = 5;
 
 const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-const getQty = (product: Product) => Number(product.quantity ?? product.qty ?? 0);
+const getQty = (product: Product) => {
+  if (product.sale_type === 'WEIGHT') return Number(product.weight_in_stock || 0);
+  return Number(product.quantity ?? product.qty ?? 0);
+};
+
+const isLowStock = (product: Product) => {
+  if (product.sale_type === 'WEIGHT') {
+    return getQty(product) < (product.min_weight || 0.5);
+  }
+  return getQty(product) < LOW_STOCK_THRESHOLD;
+};
+
+const getStockDisplay = (product: Product) => {
+  if (product.sale_type === 'WEIGHT') {
+    return `${getQty(product).toFixed(3)} kg`;
+  }
+  return `${getQty(product)} un.`;
+};
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -107,6 +127,30 @@ const Shop = () => {
     }
   };
 
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      setLoading(true);
+      await api.post('/produtos/import/csv', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success("Produtos importados com sucesso!");
+      loadProducts();
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao importar CSV.");
+    } finally {
+      setLoading(false);
+      // Limpa o input para permitir selecionar o mesmo arquivo novamente se necessário
+      e.target.value = '';
+    }
+  };
+
   const handleUpdateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
@@ -147,12 +191,19 @@ const Shop = () => {
     if (!editingProduct) return;
     setLoading(true);
     try {
-      await api.post("/estoque/movimentacoes", {
+      const payload: any = {
         product_id: editingProduct.id,
         type: movementType,
-        quantity: parseInt(movementQty),
         reason: movementReason
-      });
+      };
+      
+      if (editingProduct.sale_type === 'WEIGHT') {
+        payload.weight = parseFloat(movementQty);
+      } else {
+        payload.quantity = parseInt(movementQty);
+      }
+
+      await api.post("/estoque/movimentacoes", payload);
       toast.success("Movimentação registrada!");
       setIsMovementModalOpen(false);
       setMovementQty("");
@@ -213,7 +264,7 @@ const Shop = () => {
     const itemsInStock = products.reduce((sum, product) => sum + getQty(product), 0);
     const inventoryValue = products.reduce((sum, product) => sum + (getQty(product) * Number(product.cost_price || 0)), 0);
     const expectedRevenue = products.reduce((sum, product) => sum + (getQty(product) * Number(product.sale_price || 0)), 0);
-    const lowStock = products.filter((product) => getQty(product) < LOW_STOCK_THRESHOLD);
+    const lowStock = products.filter((product) => isLowStock(product));
 
     return {
       productsCount: products.length,
@@ -237,7 +288,7 @@ const Shop = () => {
             <div className="flex flex-wrap gap-2">
               <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline">Cadastrar produto</Button>
+                  <Button variant="outline"><Plus className="h-4 w-4 mr-2" /> Cadastrar produto</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Novo produto</DialogTitle></DialogHeader>
@@ -260,6 +311,19 @@ const Shop = () => {
                   </form>
                 </DialogContent>
               </Dialog>
+              
+              <div className="relative">
+                <input
+                  type="file"
+                  id="csv-upload"
+                  className="hidden"
+                  accept=".csv"
+                  onChange={handleImportCSV}
+                />
+                <Button variant="outline" onClick={() => document.getElementById('csv-upload')?.click()}>
+                  <Upload className="h-4 w-4 mr-2" /> Importar CSV
+                </Button>
+              </div>
               <Button onClick={() => navigate("/caixa")}>Nova venda</Button>
             </div>
           </div>
@@ -297,7 +361,7 @@ const Shop = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                       <p className={`font-black ${getQty(p) < LOW_STOCK_THRESHOLD ? 'text-rose-500' : 'text-emerald-500'}`}>{getQty(p)} un.</p>
+                       <p className={`font-black ${isLowStock(p) ? 'text-rose-500' : 'text-emerald-500'}`}>{getStockDisplay(p)}</p>
                        <div className="flex gap-1 mt-1">
                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}><Pencil className="h-3 w-3" /></Button>
                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openMovement(p)}><PlusCircle className="h-3 w-3" /></Button>
@@ -315,7 +379,7 @@ const Shop = () => {
             {totals.lowStock.length === 0 ? <p className="text-xs text-muted-foreground italic">Nenhum item abaixo do mínimo.</p> : totals.lowStock.map(p => (
               <div key={p.id} className="flex justify-between py-2 border-b border-amber-500/10 text-xs">
                 <span>{p.name}</span>
-                <span className="font-bold text-amber-600">{getQty(p)} un.</span>
+                <span className="font-bold text-amber-600">{getStockDisplay(p)}</span>
               </div>
             ))}
           </CardContent>
@@ -380,7 +444,13 @@ const Shop = () => {
                 <option value="entry">Entrada (+)</option>
                 <option value="exit">Saída (-)</option>
               </select>
-              <Input type="number" value={movementQty} onChange={e => setMovementQty(e.target.value)} placeholder="Qtd" />
+              <Input 
+                type="number" 
+                step={editingProduct?.sale_type === 'WEIGHT' ? '0.001' : '1'} 
+                value={movementQty} 
+                onChange={e => setMovementQty(e.target.value)} 
+                placeholder={editingProduct?.sale_type === 'WEIGHT' ? "Quilos (kg)" : "Qtd"} 
+              />
             </div>
             <Input value={movementReason} onChange={e => setMovementReason(e.target.value)} placeholder="Motivo" />
             <Button type="submit" className="w-full">Confirmar</Button>

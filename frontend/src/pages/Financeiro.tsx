@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,8 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownRight,
-  Wallet
+  Wallet,
+  FileText
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -122,6 +123,29 @@ const Financeiro = () => {
       loadData();
     } catch {
       toast.error("Erro ao remover.");
+    }
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const tId = toast.loading("Importando despesas...");
+    try {
+      const { data } = await api.post("/despesas/import/csv", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      toast.success(data.message, { id: tId });
+      loadData();
+    } catch (err) {
+      toast.error("Erro ao importar arquivo.", { id: tId });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -232,6 +256,21 @@ const Financeiro = () => {
               <CardDescription>Gerencie suas contas a pagar e pagas.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+               <input
+                 type="file"
+                 ref={fileInputRef}
+                 onChange={handleImportCSV}
+                 accept=".csv"
+                 className="hidden"
+               />
+               <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="rounded-lg border-dashed h-8"
+                 onClick={() => fileInputRef.current?.click()}
+               >
+                 <FileText className="h-3 w-3 mr-2" /> Importar CSV
+               </Button>
                <Badge variant="outline" className="text-destructive border-destructive/20 bg-destructive/5 px-3 py-1">
                  R$ {totalPendente.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} Pendente
                </Badge>

@@ -51,3 +51,43 @@ def deletar(db: Session, id: UUID, store_id: UUID):
     db.delete(d)
     db.commit()
     return {"message": "Despesa removida com sucesso"}
+
+def importar_csv(db: Session, rows: list, store_id: UUID):
+    from decimal import Decimal
+    from datetime import datetime
+    count = 0
+    for row in rows:
+        try:
+            desc = row.get('descricao') or row.get('description')
+            amount = row.get('valor') or row.get('amount')
+            if not desc or not amount: continue
+            
+            # Parsing da data
+            raw_date = row.get('data') or row.get('due_date') or row.get('vencimento')
+            due_date = date_type.today()
+            if raw_date:
+                try:
+                    # Tenta formatos comuns: DD/MM/YYYY ou YYYY-MM-DD
+                    if '/' in raw_date:
+                        due_date = datetime.strptime(raw_date, '%d/%m/%Y').date()
+                    else:
+                        due_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+                except:
+                    pass
+
+            despesa = Despesa(
+                store_id=store_id,
+                description=desc,
+                amount=Decimal(str(amount).replace(',', '.')),
+                category=row.get('categoria') or row.get('category') or 'Geral',
+                due_date=due_date,
+                is_paid=str(row.get('pago', '')).lower() in ['true', '1', 'sim', 'yes', 's']
+            )
+            db.add(despesa)
+            count += 1
+        except Exception as e:
+            print(f"Erro ao importar despesa: {e}")
+            continue
+            
+    db.commit()
+    return {"message": f"{count} despesas importadas com sucesso"}

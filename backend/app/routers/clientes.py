@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List, Optional
@@ -62,3 +62,17 @@ def criar_pet(client_id: UUID, dados: PetCreate, db: Session = Depends(get_db), 
 @router.patch("/{client_id}/pets/{pet_id}", response_model=PetResponse)
 def atualizar_pet(client_id: UUID, pet_id: UUID, dados: PetUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_any_role), store_id: UUID = Depends(get_current_store_id)):
     return cliente_service.atualizar_pet(db, pet_id, client_id, dados, store_id)
+
+@router.post("/import/csv")
+async def importar_clientes_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_any_role),
+    store_id: UUID = Depends(get_current_store_id)
+):
+    import csv
+    import io
+    content = await file.read()
+    decoded = content.decode('utf-8').splitlines()
+    reader = csv.DictReader(decoded)
+    return cliente_service.importar_csv(db, list(reader), store_id)

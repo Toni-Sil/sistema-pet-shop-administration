@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List, Optional
@@ -78,3 +78,17 @@ def deletar_produto(
     store_id: UUID = Depends(get_current_store_id)
 ):
     return produto_service.deletar(db, id, store_id)
+
+@router.post("/import/csv")
+async def importar_produtos_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_gerente_ou_admin),
+    store_id: UUID = Depends(get_current_store_id)
+):
+    import csv
+    import io
+    content = await file.read()
+    decoded = content.decode('utf-8').splitlines()
+    reader = csv.DictReader(decoded)
+    return produto_service.importar_csv(db, list(reader), store_id)

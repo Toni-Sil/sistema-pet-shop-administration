@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, X, Send, Bot, User as UserIcon, Loader2, Volume2 } from "lucide-react";
+import { Sparkles, X, Send, Bot, User as UserIcon, Loader2, Volume2, Paperclip } from "lucide-react";
 import { api } from "@/lib/api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -71,6 +71,15 @@ export const AIChat = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Simula o envio do arquivo informando ao chat
+    setMessage(`[Arquivo Anexado: ${file.name}] Por favor, analise este arquivo para mim.`);
+    toast.info("Arquivo anexado! Clique em enviar para processar.");
   };
 
   const handleAction = (action: AIAction) => {
@@ -179,9 +188,24 @@ export const AIChat = () => {
                 ))}
               </div>
             )}
-            <div className="flex w-full gap-2">
+            <div className="flex w-full gap-2 items-center">
+              <input 
+                type="file" 
+                id="ai-chat-file" 
+                className="hidden" 
+                onChange={handleFileSelect}
+                accept=".csv,.txt,.pdf,.png,.jpg,.jpeg"
+              />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => document.getElementById('ai-chat-file')?.click()}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
               <Input 
-                placeholder="Pergunte sobre estoque, agenda..." 
+                placeholder="Pergunte ou anexe um arquivo..." 
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleSend()}

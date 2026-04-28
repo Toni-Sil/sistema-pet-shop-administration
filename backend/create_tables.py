@@ -10,8 +10,9 @@ from app.models.venda import Venda, VendaPagamento, ItemVenda
 from app.models.agendamento import Agendamento
 from app.models.hotel import Hospedagem
 from app.models.pacote import Pacote
-from app.models.financeiro import Despesa
+from app.models.financeiro import Despesa, CaixaSession
 from app.models.service import Service
+from app.models.estoque import MovimentacaoEstoque
 
 print("Criando tabelas no banco de dados...")
 Base.metadata.create_all(bind=engine)

@@ -106,6 +106,63 @@ def deletar(db: Session, id: UUID, store_id: UUID):
     db.commit()
     return {"message": "Cliente deletado com sucesso"}
 
+def importar_csv(db: Session, rows: list, store_id: UUID):
+    count_clients = 0
+    count_pets = 0
+    for row in rows:
+        try:
+            # 1. Processar Cliente
+            nome = row.get('nome') or row.get('name')
+            if not nome: continue
+            
+            # Tenta encontrar cliente existente pelo telefone ou documento para evitar duplicidade
+            telefone = str(row.get('telefone') or row.get('phone') or '').strip()
+            documento = str(row.get('cpf') or row.get('documento') or '').strip()
+            
+            cliente = None
+            if telefone:
+                cliente = db.query(Cliente).filter(Cliente.store_id == store_id, Cliente.phone == telefone).first()
+            if not cliente and documento:
+                cliente = db.query(Cliente).filter(Cliente.store_id == store_id, Cliente.document == documento).first()
+                
+            if not cliente:
+                cliente = Cliente(
+                    store_id=store_id,
+                    name=nome,
+                    phone=telefone,
+                    email=row.get('email'),
+                    document=documento,
+                    address=row.get('endereco') or row.get('address')
+                )
+                db.add(cliente)
+                db.flush() # Para pegar o ID do cliente
+                count_clients += 1
+            
+            # 2. Processar Pet (se houver dados de pet na linha)
+            pet_nome = row.get('pet_nome') or row.get('pet_name')
+            if pet_nome:
+                # Verifica se o pet já existe para este cliente
+                pet_existente = db.query(Pet).filter(Pet.client_id == cliente.id, Pet.name == pet_nome).first()
+                if not pet_existente:
+                    pet = Pet(
+                        store_id=store_id,
+                        client_id=cliente.id,
+                        name=pet_nome,
+                        species=row.get('pet_especie') or row.get('pet_species') or 'Cão',
+                        breed=row.get('pet_raca') or row.get('pet_breed') or 'SRD',
+                        gender=row.get('pet_sexo') or row.get('pet_gender'),
+                        weight=float(row.get('pet_peso', 0)) if row.get('pet_peso') else None
+                    )
+                    db.add(pet)
+                    count_pets += 1
+                    
+        except Exception as e:
+            print(f"Erro ao importar linha {row}: {e}")
+            continue
+            
+    db.commit()
+    return {"message": f"{count_clients} clientes e {count_pets} pets importados com sucesso"}
+
 
 # ── Pets ──────────────────────────────────────────────────
 

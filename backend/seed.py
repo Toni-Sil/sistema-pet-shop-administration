@@ -9,11 +9,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.database import SessionLocal
 from app.models.store import Store
+from app.models.user import User
 from app.models.cliente import Cliente, Pet
 from app.models.produto import Produto
 from app.models.hotel import Quarto, Hospedagem, QuartoStatus, HospedagemStatus
 from app.models.agendamento import Agendamento
 from app.models.service import Service
+from app.core import security
 
 def seed_db():
     db = SessionLocal()
@@ -27,6 +29,24 @@ def seed_db():
             db.refresh(store)
 
         print(f"Usando Store: {store.name} ({store.id})")
+
+        # 0. Usuário Admin
+        admin_email = "admin@demo.com"
+        admin_user = db.query(User).filter_by(email=admin_email).first()
+        if not admin_user:
+            admin_user = User(
+                store_id=store.id,
+                name="Administrador Demo",
+                email=admin_email,
+                password_hash=security.get_password_hash("admin123"),
+                role="owner",
+                is_active=True
+            )
+            db.add(admin_user)
+            db.commit()
+            print(f"Usuário {admin_email} criado com sucesso!")
+        else:
+            print(f"Usuário {admin_email} já existe.")
 
         # 1. Serviços Fictícios
         services = []
@@ -125,13 +145,12 @@ def seed_db():
         db.commit()
 
         # 7. Hospedagem (Hotel)
-        # Check-in ontem, checkout amanhã
         h = db.query(Hospedagem).filter_by(store_id=store.id, pet_id=pets[1].id).first()
         if not h:
             h = Hospedagem(
                 store_id=store.id,
                 pet_id=pets[1].id,
-                quarto_id=quartos[1].id, # Gatil
+                quarto_id=quartos[1].id,
                 check_in_previsto=datetime.now() - timedelta(days=1),
                 check_out_previsto=datetime.now() + timedelta(days=1),
                 check_in_real=datetime.now() - timedelta(days=1),

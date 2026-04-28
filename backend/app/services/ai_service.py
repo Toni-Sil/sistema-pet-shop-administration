@@ -128,6 +128,42 @@ class AIService:
                  response_text = "📦 **Comando de Voz**: Verificando estoque de **Rações**. O item mais crítico já está selecionado."
                  actions = [{"label": "📦 Repor Ração", "type": "navigate", "payload": "/estoque?category=Ração"}]
 
+        elif any(w in msg for w in ["lançar despesa", "registrar gasto", "pagar conta", "gastei"]):
+            from app.services.despesa_service import criar
+            from app.schemas.despesa import DespesaCreate
+            import re
+            
+            target_agent = "financial"
+            amount_match = re.search(r'(\d+[\.,]?\d*)', msg)
+            amount = float(amount_match.group(1).replace(',', '.')) if amount_match else 0
+            
+            if amount > 0:
+                # Tenta extrair a descrição (o que sobrar após remover o comando e o valor)
+                desc = msg.replace("lançar despesa", "").replace("registrar gasto", "").replace("pagar conta", "").replace("gastei", "")
+                desc = re.sub(r'\d+[\.,]?\d*', '', desc).replace("reais", "").replace("de", "").strip().title()
+                
+                try:
+                    nova_desp = criar(db, DespesaCreate(
+                        description=desc or "Gasto via IA",
+                        amount=amount,
+                        category="Outros",
+                        due_date=date.today()
+                    ), store_id)
+                    
+                    response_text = f"✅ **Automático**: Registrei agora mesmo uma despesa de **R$ {amount:.2f}** para **'{desc}'** no seu financeiro. Tudo pronto!"
+                    actions = [{"label": "💰 Ver Financeiro", "type": "navigate", "payload": "/financeiro"}]
+                    return ChatResponse(
+                        response=response_text,
+                        agent_id=target_agent,
+                        model_used=used_model,
+                        suggestions=["Ver resumo do mês", "Total de despesas hoje"],
+                        actions=actions
+                    )
+                except:
+                    response_text = "❌ Tive um problema ao registrar automaticamente. Tente usar o formulário manual no financeiro."
+            else:
+                response_text = "💰 Para registrar um gasto, me diga o valor. Ex: 'Lançar despesa de 50 reais para luz'."
+
         elif any(w in msg for w in ["relatório", "faturamento", "quanto ganhei"]):
             target_agent = "financial"
             response_text = "📊 **Comando de Voz**: Gerando relatório financeiro instantâneo. Veja os números na tela."
