@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UserPlus, Search, Phone, ChevronRight, ArrowDown, ArrowUp, MapPin, Dog, PlusCircle, MessageCircle, Edit2 } from "lucide-react";
+import { UserPlus, Search, Phone, ChevronRight, ArrowDown, ArrowUp, MapPin, Dog, PlusCircle, MessageCircle, Edit2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import {
@@ -201,83 +201,84 @@ const Clients = () => {
                 <PlusCircle className="h-4 w-4 mr-2" /> Cadastrar Novo Tutor
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-primary" /> {editClientId ? "Editar Cliente" : "Ficha de Cadastro"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nome Completo do Tutor</Label>
-                  <Input required placeholder="Ex: João da Silva" value={name} onChange={e => setName(e.target.value)} />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5 text-primary" /> {editClientId ? "Editar Cliente" : "Ficha de Cadastro"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>WhatsApp / Contato</Label>
-                    <Input required placeholder="(11) 9..." value={phone} onChange={e => setPhone(e.target.value)} />
+                    <Label>Nome Completo do Tutor</Label>
+                    <Input required placeholder="Ex: João da Silva" value={name} onChange={e => setName(e.target.value)} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>E-mail</Label>
-                    <Input type="email" placeholder="nome@email.com" value={email} onChange={e => setEmail(e.target.value)} />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Residência / Endereço</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input className="pl-9" placeholder="Rua, número, bairro..." value={address} onChange={e => setAddress(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              {!editClientId && (
-                <div className="pt-4 border-t space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-bold flex items-center gap-2">
-                      <Dog className="h-4 w-4 text-primary" /> Já cadastrar o Primeiro Pet?
-                    </Label>
-                    <input 
-                      type="checkbox" 
-                      checked={addPetTogether} 
-                      onChange={e => setAddPetTogether(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                    />
-                  </div>
-
-                  {addPetTogether && (
-                    <div className="p-4 bg-muted/50 rounded-xl border border-dashed space-y-3 animate-in fade-in zoom-in-95 duration-200">
-                      <div className="space-y-2">
-                        <Label className="text-xs">Nome do Pet (Animal)</Label>
-                        <Input placeholder="Ex: Rex, Luna..." value={petName} onChange={e => setPetName(e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Espécie</Label>
-                        <select 
-                          className="w-full h-9 rounded-md border text-xs bg-background outline-none px-2"
-                          value={petSpecies}
-                          onChange={e => setPetSpecies(e.target.value)}
-                        >
-                          <option value="dog">Cachorro</option>
-                          <option value="cat">Gato</option>
-                          <option value="bird">Pássaro</option>
-                          <option value="other">Outro</option>
-                        </select>
-                      </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>WhatsApp / Contato</Label>
+                      <Input required placeholder="(11) 9..." value={phone} onChange={e => setPhone(e.target.value)} />
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="space-y-2">
+                      <Label>E-mail</Label>
+                      <Input type="email" placeholder="nome@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+                    </div>
+                  </div>
 
-              <Button type="submit" className="w-full py-6 text-base font-bold" disabled={saving}>
-                {saving ? "Processando..." : (editClientId ? "Salvar Alterações" : "Confirmar Cadastro Completo")}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+                  <div className="space-y-2">
+                    <Label>Residência / Endereço</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input className="pl-9" placeholder="Rua, número, bairro..." value={address} onChange={e => setAddress(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                {!editClientId && (
+                  <div className="pt-4 border-t space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-bold flex items-center gap-2">
+                        <Dog className="h-4 w-4 text-primary" /> Já cadastrar o Primeiro Pet?
+                      </Label>
+                      <input 
+                        type="checkbox" 
+                        checked={addPetTogether} 
+                        onChange={e => setAddPetTogether(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                      />
+                    </div>
+
+                    {addPetTogether && (
+                      <div className="p-4 bg-muted/50 rounded-xl border border-dashed space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Nome do Pet (Animal)</Label>
+                          <Input placeholder="Ex: Rex, Luna..." value={petName} onChange={e => setPetName(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Espécie</Label>
+                          <select 
+                            className="w-full h-9 rounded-md border text-xs bg-background outline-none px-2"
+                            value={petSpecies}
+                            onChange={e => setPetSpecies(e.target.value)}
+                          >
+                            <option value="dog">Cachorro</option>
+                            <option value="cat">Gato</option>
+                            <option value="bird">Pássaro</option>
+                            <option value="other">Outro</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full py-6 text-base font-bold" disabled={saving}>
+                  {saving ? "Processando..." : (editClientId ? "Salvar Alterações" : "Confirmar Cadastro Completo")}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card className="border-none bg-background/50 backdrop-blur-sm shadow-sm ring-1 ring-border">
@@ -307,7 +308,11 @@ const Clients = () => {
                 onClick={() => setSortBy((prev) => (prev === "name" ? "recent" : "name"))}
                 className="rounded-xl border-border bg-background"
               >
-                {sortBy === "name" ? <><ArrowDown className="h-4 w-4 mr-2" /> A-Z</> : <><ArrowUp className="h-4 w-4 mr-2" /> Recentes</>}
+                {sortBy === "name" ? (
+                  <span className="flex items-center"><ArrowDown className="h-4 w-4 mr-2" /> A-Z</span>
+                ) : (
+                  <span className="flex items-center"><ArrowUp className="h-4 w-4 mr-2" /> Recentes</span>
+                )}
               </Button>
             </div>
           </div>
