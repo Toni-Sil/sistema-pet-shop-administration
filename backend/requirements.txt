@@ -15,3 +15,5 @@ google-generativeai
 pyotp
 qrcode[pil]
 apscheduler
+celery
+redis

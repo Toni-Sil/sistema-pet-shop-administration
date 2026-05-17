@@ -12,6 +12,8 @@ from app.routers import (
     reports, payments, mfa, idempotency, caixa, fiscal, pacotes, hotel
 )
 from ai.routes import router as ai_agents_router
+from ai.routes_v2 import router as ai_v2_router
+from ai.routes_operations import router as ai_operations_router
 from app.middleware import RequestLoggingMiddleware
 from app.rate_limit import RateLimitMiddleware
 from app.exceptions import (
@@ -80,6 +82,8 @@ app.include_router(pacotes.router, prefix=settings.API_V1_STR)
 app.include_router(hotel.router, prefix=settings.API_V1_STR)
 
 app.include_router(ai_agents_router, prefix=f"{settings.API_V1_STR}/ai-agents", tags=["AI Agents"])
+app.include_router(ai_v2_router, prefix=settings.API_V1_STR, tags=["AI System V2"])
+app.include_router(ai_operations_router, prefix=settings.API_V1_STR, tags=["Operations Center"])
 
 @app.get("/health")
 def health_check():

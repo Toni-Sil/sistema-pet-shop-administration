@@ -13,3 +13,4 @@ from app.models.service import Service
 from app.models.whatsapp_log import WhatsAppLog
 from app.models.pet_note import PetNote
 from app.models.schedule_block import ScheduleBlock
+from app.models.agent import AgentDefinition, AgentExecution, AgentMemory, AgentEvent, EscalationLog, ApprovalRequest
