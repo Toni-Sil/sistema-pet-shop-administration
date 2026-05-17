@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import {
   Bot,
@@ -24,7 +25,8 @@ import {
   Settings,
   ShieldAlert,
   ArrowRight,
-  UserCheck
+  UserCheck,
+  Key
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,6 +52,7 @@ interface DashboardData {
     recent_executions: number;
     last_execution: string | null;
   }>;
+  openai_key_configured: boolean;
 }
 
 interface EventBusItem {
@@ -144,6 +147,54 @@ export default function Agents() {
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [savingKey, setSavingKey] = useState(false);
+
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) {
+      toast.error("Por favor, insira uma chave de API válida.");
+      return;
+    }
+    setSavingKey(true);
+    try {
+      const storeRes = await api.get("/settings/loja");
+      const storeData = storeRes.data;
+      const currentSettings = storeData.settings || {};
+      const currentProviders = currentSettings.ai_providers || [];
+      
+      let updatedProviders = Array.isArray(currentProviders) ? [...currentProviders] : [];
+      const openaiIdx = updatedProviders.findIndex((p: any) => p.id === "openai");
+      if (openaiIdx > -1) {
+        updatedProviders[openaiIdx] = {
+          ...updatedProviders[openaiIdx],
+          apiKey: apiKeyInput.trim()
+        };
+      } else {
+        updatedProviders.push({
+          id: "openai",
+          name: "OpenAI",
+          apiType: "openai",
+          baseUrl: "https://api.openai.com/v1",
+          apiKey: apiKeyInput.trim()
+        });
+      }
+      
+      const newSettings = {
+        ...currentSettings,
+        ai_providers: updatedProviders
+      };
+      await api.patch("/settings/loja", { settings: newSettings });
+      
+      toast.success("Chave de API OpenAI configurada e salva com sucesso!");
+      setApiKeyInput("");
+      fetchData(false);
+    } catch (error) {
+      console.error("Erro ao salvar chave de API:", error);
+      toast.error("Não foi possível salvar a chave de API.");
+    } finally {
+      setSavingKey(false);
+    }
+  };
 
   const fetchData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -197,6 +248,9 @@ export default function Agents() {
   };
 
   const getHealthBadge = (health: string) => {
+    if (dashboard && !dashboard.openai_key_configured) {
+      return <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-bold animate-pulse">SEM CHAVE API</Badge>;
+    }
     switch (health) {
       case "operational":
       case "idle":
@@ -218,6 +272,9 @@ export default function Agents() {
       case "waiting":
       case "requires_approval":
         return <Badge variant="outline" className="text-amber-500 border-amber-500/20 bg-amber-500/5">Aguardando Humano</Badge>;
+      case "offline":
+      case "unconfigured":
+        return <Badge variant="outline" className="text-red-500 border-red-500/20 bg-red-500/5 font-semibold">Inativo</Badge>;
       default:
         return <Badge variant="outline">{state}</Badge>;
     }
@@ -234,6 +291,35 @@ export default function Agents() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12 animate-fade-in">
+      {/* OpenAI API Key Missing Warning banner */}
+      {dashboard && !dashboard.openai_key_configured && (
+        <div className="bg-gradient-to-r from-red-500/10 via-amber-500/10 to-red-500/10 border border-red-500/30 p-6 rounded-2xl backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-red-500/5 animate-fade-in">
+          <div className="flex gap-4">
+            <div className="p-3 bg-red-500/20 rounded-xl text-red-500 flex items-center justify-center h-12 w-12 self-start md:self-center">
+              <Key className="h-6 w-6 animate-pulse" />
+            </div>
+            <div>
+              <h4 className="font-extrabold text-sm text-red-400">Chave de API OpenAI Ausente</h4>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-xl">
+                Os agentes cognitivos de Inteligência Artificial estão desativados porque nenhuma chave de API da OpenAI foi configurada para a sua loja. Para ativá-los, insira sua chave abaixo.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 w-full md:w-auto items-center">
+            <Input
+              type="password"
+              placeholder="sk-proj-..."
+              value={apiKeyInput}
+              onChange={(e) => setApiKeyInput(e.target.value)}
+              className="max-w-xs bg-background/50 border-red-500/20 focus:border-red-500 text-xs h-9"
+            />
+            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold h-9 text-xs" onClick={handleSaveApiKey} disabled={savingKey}>
+              {savingKey ? "Salvando..." : "Salvar Chave"}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Top Cockpit Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background/50 border border-border p-6 rounded-2xl backdrop-blur-md shadow-sm">
         <div className="flex items-center gap-3">

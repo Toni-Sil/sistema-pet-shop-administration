@@ -606,13 +606,38 @@ class AtendimentoAgent(BaseAgent):
         }
 
 
-def build_llm_client() -> AsyncOpenAI:
+def get_openai_api_key_from_settings(store_settings: Dict[str, Any] | None) -> str | None:
+    """Extrai a chave de API da OpenAI das configurações da loja."""
+    if not store_settings:
+        return None
+        
+    # 1. Tenta buscar em ai_providers
+    providers = store_settings.get("ai_providers", [])
+    if isinstance(providers, list):
+        for provider in providers:
+            if isinstance(provider, dict) and provider.get("id") == "openai":
+                return provider.get("apiKey")
+    elif isinstance(providers, dict):
+        openai_p = providers.get("openai")
+        if isinstance(openai_p, dict):
+            return openai_p.get("apiKey")
+            
+    # 2. Tenta buscar chaves diretas
+    for k in ["openai_api_key", "openai_key", "api_key"]:
+        if store_settings.get(k):
+            return store_settings.get(k)
+            
+    return None
+
+
+def build_llm_client(api_key: str | None = None) -> AsyncOpenAI:
     """Cria cliente LLM.
 
-    - Por enquanto usa OpenAI, lendo OPENAI_API_KEY do ambiente.
+    - Por enquanto usa OpenAI, lendo OPENAI_API_KEY do ambiente ou chave dinâmica.
     - No futuro, pode ser estendido para múltiplos provedores.
     """
-
+    if api_key:
+        return AsyncOpenAI(api_key=api_key)
     return AsyncOpenAI()
 
 
