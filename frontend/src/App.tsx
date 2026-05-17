@@ -23,6 +23,7 @@ import ServiceManagement from "./pages/ServiceManagement";
 import PublicBooking from "./pages/PublicBooking";
 import Fiscal from "./pages/Fiscal";
 import Hotel from "./pages/Hotel";
+import Agents from "./pages/Agents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/financeiro" element={<PrivateRoute><Layout><Financeiro /></Layout></PrivateRoute>} />
             <Route path="/fiscal" element={<PrivateRoute><Layout><Fiscal /></Layout></PrivateRoute>} />
             <Route path="/hotel" element={<PrivateRoute><Layout><Hotel /></Layout></PrivateRoute>} />
+            <Route path="/agentes" element={<PrivateRoute><Layout><Agents /></Layout></PrivateRoute>} />
             <Route path="/configuracoes" element={<PrivateRoute><Layout><Settings /></Layout></PrivateRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

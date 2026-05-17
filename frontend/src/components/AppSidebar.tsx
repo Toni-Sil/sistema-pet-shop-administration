@@ -1,4 +1,4 @@
-import { Home, Calendar, ShoppingCart, Users, PawPrint, BarChart3, Settings, CreditCard, DollarSign, FileText, Hotel } from "lucide-react";
+import { Home, Calendar, ShoppingCart, Users, PawPrint, BarChart3, Settings, CreditCard, DollarSign, FileText, Hotel, Bot } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -21,6 +21,7 @@ const menuItems = [
   { id: "nav-clientes", title: "Clientes", url: "/clientes", icon: Users },
   { id: "nav-pets", title: "Pets", url: "/pets", icon: PawPrint },
   { id: "nav-hotel", title: "Hotel / Creche", url: "/hotel", icon: Hotel },
+  { id: "nav-agentes", title: "Cockpit IA", url: "/agentes", icon: Bot },
   { id: "nav-relatorios", title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { id: "nav-fiscal", title: "Notas Fiscais", url: "/fiscal", icon: FileText },
   { id: "nav-configuracoes", title: "Configurações", url: "/configuracoes", icon: Settings },
